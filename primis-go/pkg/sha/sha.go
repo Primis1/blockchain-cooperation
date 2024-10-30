@@ -1,0 +1,5 @@
+package sha
+
+func Sha() {
+
+}
