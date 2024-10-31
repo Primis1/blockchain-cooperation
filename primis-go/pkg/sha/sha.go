@@ -3,12 +3,10 @@ package sha
 import (
 	"encoding/binary"
 	"fmt"
-	"crypto/sha256"
 )
 
-
 // roots of first `24` prime number
-var k = []uint{
+var k = []uint32{
 	0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
 	0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
 	0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -54,7 +52,7 @@ func sha256Transform(hashValues []uint32, chunk []byte) {
 	for i := 0; i < 64; i++ {
 		s1 := rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)
 		ch := (e & f) ^ (^e & g)
-		
+
 		// Ensure all components are of type uint32
 		temp1 := hVal + s1 + ch + k[i] + w[i]
 		s0 := rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22) // Ensure s0 is computed here
@@ -75,7 +73,6 @@ func sha256Transform(hashValues []uint32, chunk []byte) {
 	hashValues[6] += g
 	hashValues[7] += hVal
 }
-
 
 func padMessage(message []byte) []byte {
 	length := uint64(len(message) * 8)
