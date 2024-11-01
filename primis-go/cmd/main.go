@@ -2,18 +2,16 @@ package main
 
 import (
 	"blockchain/internal/config"
+	"blockchain/internal/singleton"
 	"blockchain/pkg/blockchain"
-	"fmt"
 )
 
 var chain = blockchain.Facade
 
-// var logs = logging.NewLogger(logging.INFO)
-// var errs = logging.NewLogger(logging.ERR)
-
 func init() {
 	config.MustEnvironment()
 }
+
 
 func main() {
 
@@ -22,6 +20,6 @@ func main() {
 	chain.AddBlock("idk")
 
 	for _, block := range chain.Chain.Blocks {
-		fmt.Printf("%s", block)
+		singleton.Log("%s", block)
 	}
 }

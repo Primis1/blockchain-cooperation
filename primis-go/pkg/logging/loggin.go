@@ -16,21 +16,27 @@ const (
 )
 
 type Application struct {
-	level    logLevel
-	errorLog *log.Logger
-	infoLog  *log.Logger
+	Level    logLevel
+	ErrorLog *log.Logger
+	InfoLog  *log.Logger
 }
 
-var infoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
-var errorLog = log.New(os.Stderr, "ERROR: \t", log.Ltime)
+type LoggingFacadeT struct {
+	Log *Application
+}
+
+var InfoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
+var ErrorLog = log.New(os.Stderr, "ERROR: \t", log.Ltime)
 
 var path string
 
-func NewLogger(Level logLevel) *Application {
+var LoggingFacade = &LoggingFacadeT{}
+
+func (l *LoggingFacadeT) NewLogger(Level logLevel) *Application {
 	return &Application{
-		level:    Level,
-		errorLog: errorLog,
-		infoLog:  infoLog,
+		Level:    Level,
+		ErrorLog: ErrorLog,
+		InfoLog:  InfoLog,
 	}
 }
 
@@ -47,25 +53,25 @@ func assertion(msg any) string {
 	return comp
 }
 
-func (l *Application) Info(msg any, args ...any) {
+func (l *LoggingFacadeT) Info(msg any, args ...any) {
 
 	compiled := assertion(msg)
 
-	if l.level == INFO {
+	if l.Log.Level == INFO {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
-		l.infoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.Log.InfoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 
-func (l *Application) Error(msg any, args ...any) {
+func (l *LoggingFacadeT) Error(msg any, args ...any) {
 
 	converted := assertion(msg)
-	if l.level == ERR {
+	if l.Log.Level == ERR {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(converted, args...) // Format the message using the provided arguments
 
-		l.errorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.Log.ErrorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 
