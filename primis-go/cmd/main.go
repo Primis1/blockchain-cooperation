@@ -1,9 +1,27 @@
 package main
 
-import "blockchain/internal/config"
+import (
+	"blockchain/internal/config"
+	"blockchain/pkg/blockchain"
+	"fmt"
+)
+
+var chain = blockchain.Facade
+
+// var logs = logging.NewLogger(logging.INFO)
+// var errs = logging.NewLogger(logging.ERR)
 
 func init() {
-	config.MustEnvrionment()
+	config.MustEnvironment()
 }
 
-func main() {}
+func main() {
+
+	chain.InitBlockChain()
+
+	chain.AddBlock("idk")
+
+	for _, block := range chain.Chain.Blocks {
+		fmt.Printf("%s", block)
+	}
+}
