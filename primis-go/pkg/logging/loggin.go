@@ -1,3 +1,6 @@
+// TODO  restrict access for wrong logging type 
+// TODO  if INFO is selected, then only info logger can be selected!
+
 package logging
 
 import (
@@ -6,9 +9,15 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"sync"
 )
 
 type logLevel int
+
+var (
+	once           sync.Once
+	loggerInstance *Application
+)
 
 const (
 	INFO logLevel = iota
@@ -21,23 +30,22 @@ type Application struct {
 	InfoLog  *log.Logger
 }
 
-type LoggingFacadeT struct {
-	Log *Application
-}
-
 var InfoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
 var ErrorLog = log.New(os.Stderr, "ERROR: \t", log.Ltime)
 
 var path string
 
-var LoggingFacade = &LoggingFacadeT{}
+func GetLoggerInstance(Level logLevel) *Application {
+	once.Do(func() {
+		fmt.Println("Logger instance is created")
+		loggerInstance = &Application{
+			Level:    Level,
+			ErrorLog: ErrorLog,
+			InfoLog:  InfoLog,
+		}
+	})
+	return loggerInstance
 
-func (l *LoggingFacadeT) NewLogger(Level logLevel) *Application {
-	return &Application{
-		Level:    Level,
-		ErrorLog: ErrorLog,
-		InfoLog:  InfoLog,
-	}
 }
 
 func assertion(msg any) string {
@@ -53,25 +61,25 @@ func assertion(msg any) string {
 	return comp
 }
 
-func (l *LoggingFacadeT) Info(msg any, args ...any) {
+func (l *Application) Info(msg any, args ...any) {
 
 	compiled := assertion(msg)
 
-	if l.Log.Level == INFO {
+	if l.Level == INFO {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
-		l.Log.InfoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.InfoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 
-func (l *LoggingFacadeT) Error(msg any, args ...any) {
+func (l *Application) Error(msg any, args ...any) {
 
 	converted := assertion(msg)
-	if l.Log.Level == ERR {
+	if l.Level == ERR {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(converted, args...) // Format the message using the provided arguments
 
-		l.Log.ErrorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.ErrorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 
