@@ -3,6 +3,7 @@ package blockchain
 import (
 	"blockchain/pkg/logging"
 	"blockchain/pkg/sha"
+	"blockchain/pkg/utils"
 	"bytes"
 	"encoding/binary"
 	"math"
@@ -10,8 +11,7 @@ import (
 )
 
 var (
-	info   = logging.GetLoggerInstance(logging.INFO)
-	errMsg = logging.GetLoggerInstance(logging.ERR)
+	info = logging.GetLoggerInstance(logging.INFO)
 )
 
 // NOTE architecture structure to work over same instances
@@ -102,8 +102,7 @@ func (pow *ProfOW) Validate() bool {
 
 	intHash.SetBytes(hash[:])
 
-
-	// compare the hashes 
+	// compare the hashes
 	return intHash.Cmp(pow.Target) == -1
 }
 
@@ -112,9 +111,7 @@ func ToHex(num int64) []byte {
 	buff := new(bytes.Buffer)
 
 	err := binary.Write(buff, binary.BigEndian, num)
-	if err == nil {
-		errMsg.Error(err)
-	}
+	utils.HandleErr(err)
 
 	return buff.Bytes()
 }
