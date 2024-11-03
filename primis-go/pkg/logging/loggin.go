@@ -1,4 +1,4 @@
-// TODO  restrict access for wrong logging type 
+// TODO  restrict access for wrong logging type
 // TODO  if INFO is selected, then only info logger can be selected!
 
 package logging
@@ -26,8 +26,8 @@ const (
 
 type Application struct {
 	Level    logLevel
-	ErrorLog *log.Logger
-	InfoLog  *log.Logger
+	errorLog *log.Logger
+	infoLog  *log.Logger
 }
 
 var InfoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
@@ -40,8 +40,8 @@ func GetLoggerInstance(Level logLevel) *Application {
 		fmt.Println("Logger instance is created")
 		loggerInstance = &Application{
 			Level:    Level,
-			ErrorLog: ErrorLog,
-			InfoLog:  InfoLog,
+			errorLog: ErrorLog,
+			infoLog:  InfoLog,
 		}
 	})
 	return loggerInstance
@@ -68,7 +68,7 @@ func (l *Application) Info(msg any, args ...any) {
 	if l.Level == INFO {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
-		l.InfoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.infoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 
@@ -79,7 +79,7 @@ func (l *Application) Error(msg any, args ...any) {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(converted, args...) // Format the message using the provided arguments
 
-		l.ErrorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.errorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 
@@ -102,3 +102,6 @@ func getCaller() (string, int) {
 
 	return file, line
 }
+
+var Info = GetLoggerInstance(INFO)
+var Err = GetLoggerInstance(ERR)
