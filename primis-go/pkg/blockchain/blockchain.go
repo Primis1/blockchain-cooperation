@@ -22,7 +22,7 @@ type BlockChainIterator struct {
 }
 
 // Global instance of FacadeType for easy access
-var Facade = &FacadeType{}
+// var Facade = &FacadeType{}
 
 // NOTE During writing i yet again found myself, that blockchain is emphasize the "linked list like"
 // NOTE abstractions. Linked-List of Peer's Databases - sounds wonderful
