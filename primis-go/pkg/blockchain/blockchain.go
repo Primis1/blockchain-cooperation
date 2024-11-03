@@ -61,13 +61,9 @@ func (f *FacadeType) AddBlock(data string) {
 
 	err = f.chain.Database.Update(func(txn *badger.Txn) error {
 		err := txn.Set(newBlock.Hash, newBlock.Serialize())
-
 		utils.HandleErr(err)
-
 		err = txn.Set([]byte("lh"), newBlock.Hash)
-
 		f.chain.LastHash = newBlock.Hash
-
 		return err
 	})
 
@@ -76,9 +72,7 @@ func (f *FacadeType) AddBlock(data string) {
 
 func (f *FacadeType) Iterator() *BlockChainIterator {
 	iter := &BlockChainIterator{f.chain.LastHash, f.chain.Database}
-
 	f.iterator = iter
-
 	return f.iterator
 }
 
@@ -119,11 +113,13 @@ func (f *FacadeType) InitBlockChain() *BlockChain {
 	// NOTE View() only read from db
 	err = db.Update(func(txn *badger.Txn) error {
 		// NOTE 1. Check the existence of blockchain
+
 		// NOTE 1. If present create a new BC instance in memory
 		// NOTE 2. Get the last hash from the disk DB,
-		// NOTE    push it into instance of created BC
-		// NOTE 3.
+		// NOTE 3.  push it into instance of created BC
+
 		// NOTE 2. If not:
+
 		// NOTE 1. Create a Genesis block
 		// NOTE 2. Store that in DB
 		// NOTE 3. Take hash from DB

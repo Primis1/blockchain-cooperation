@@ -1,6 +1,7 @@
 package main
 
 import (
+	"blockchain/internal/cli"
 	"blockchain/internal/config"
 	"blockchain/pkg/logging"
 )
@@ -14,4 +15,8 @@ func init() {
 	logging.GetLoggerInstance(logging.INFO)
 }
 
-func main() {}
+func main() {
+	cli := cli.CommandLine{}
+
+	cli.Run()
+}
