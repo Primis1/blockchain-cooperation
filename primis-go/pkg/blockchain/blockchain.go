@@ -57,7 +57,7 @@ func (f *FacadeType) AddBlock(data string) {
 	})
 	utils.HandleErr(err)
 
-	newBlock := f.CreateBlock(data, lastHash)
+	newBlock := CreateBlock(data, lastHash)
 
 	err = f.chain.Database.Update(func(txn *badger.Txn) error {
 		err := txn.Set(newBlock.Hash, newBlock.Serialize())
@@ -126,7 +126,7 @@ func (f *FacadeType) InitBlockChain() *BlockChain {
 
 		if _, err := txn.Get([]byte("ln")); err == badger.ErrKeyNotFound {
 			info.Info("No existing blockchain found")
-			genesis := f.GenesisBlock()
+			genesis := GenesisBlock()
 			info.Info("Genesis proved")
 			err = txn.Set(genesis.Hash, genesis.Serialize())
 			utils.HandleErr(err)

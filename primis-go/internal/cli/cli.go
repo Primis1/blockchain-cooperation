@@ -9,6 +9,48 @@ import (
 	"runtime"
 	"strconv"
 )
+// NOTE `COMMAND` design pattern in use
+type Command interface {
+	Execute()
+	Validate()
+}
+
+type BaseCommand struct {
+	chain *blockchain.BlockChain
+}
+
+
+type CreateBlockchainCommand struct {
+	address string
+	chain   *blockchain.BlockChain
+}
+func (c *CreateBlockchainCommand) Execute(){
+	chain := blockchain.
+}
+
+
+func (c *CreateBlockchainCommand) Validate(){
+	if c.address == "" {
+		utils.HandleErr("address is required")
+	}
+}
+
+
+
+
+type SendCommand struct {
+	from   string
+	to     string
+	amount int
+	chain  *blockchain.BlockChain
+}
+
+type GetBalanceCommand struct {
+	address string
+	chain   *blockchain.BlockChain
+}
+
+
 
 type CommandLine struct {
 	blockchain *blockchain.FacadeType
