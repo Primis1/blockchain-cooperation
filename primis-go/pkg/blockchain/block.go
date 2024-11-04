@@ -1,10 +1,10 @@
 package blockchain
 
 import (
+	"blockchain/pkg/sha"
+	"blockchain/pkg/utils"
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
-	"log"
 )
 
 type Block struct {
@@ -14,10 +14,26 @@ type Block struct {
 	Nonce        int
 }
 
+type ProofOfWorkFactory struct{}
+
+type BlockFactory struct {
+	powFactory *ProofOfWorkFactory
+}
+
+func NewBlockFactory() *BlockFactory {
+	return &BlockFactory{
+		powFactory: &ProofOfWorkFactory{},
+	}
+}
+
+type BlockConfig struct {
+	Transaction []*Transaction
+	PrevHash    []byte
+	Diff        int
+}
+
 // NOTE GenesisBlock creates the initial block in the blockchain.
-
 // NOTE We should declare serializer for default GO DB
-
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte
 	var txHash [32]byte
@@ -25,14 +41,20 @@ func (b *Block) HashTransactions() []byte {
 	for _, tx := range b.Transactions {
 		txHashes = append(txHashes, tx.ID)
 	}
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	txHash = sha.ComputeHash(bytes.Join(txHashes, []byte{}))
 
 	return txHash[:]
 }
 
 // NOTE CreateBlock generates a new block with provided data and previous hash.
-func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
-	block := &Block{[]byte{}, txs, prevHash, 0}
+func (f *BlockFactory) CreateBlock(config BlockConfig) *Block {
+	block := &Block{
+		Hash:         []byte{},
+		Transactions: config.Transaction,
+		PrevHash:     config.PrevHash,
+		Nonce:        0,
+	}
+
 	pow := NewProof(block)
 	nonce, hash := pow.Run()
 
@@ -42,8 +64,12 @@ func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 	return block
 }
 
-func Genesis(coinbase *Transaction) *Block {
-	return CreateBlock([]*Transaction{coinbase}, []byte{})
+func (f *BlockFactory) CreateGenesis(coinbase *Transaction) *Block {
+	return f.CreateBlock(BlockConfig{
+		Transaction: []*Transaction{coinbase},
+		PrevHash:    []byte{},
+	})
+
 }
 
 func (b *Block) Serialize() []byte {
@@ -52,7 +78,7 @@ func (b *Block) Serialize() []byte {
 
 	err := encoder.Encode(b)
 
-	Handle(err)
+	utils.HandleErr(err)
 
 	return res.Bytes()
 }
@@ -64,13 +90,9 @@ func Deserialize(data []byte) *Block {
 
 	err := decoder.Decode(&block)
 
-	Handle(err)
+	utils.HandleErr(err)
 
 	return &block
 }
 
-func Handle(err error) {
-	if err != nil {
-		log.Panic(err)
-	}
-}
+

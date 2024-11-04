@@ -2,7 +2,7 @@ package utils
 
 import "blockchain/pkg/logging"
 
-var err = logging.GetLoggerInstance(logging.ERR)
+var err = logging.Err
 
 func HandleErr(T any) {
 	if T != nil {

@@ -34,13 +34,6 @@ type BlockChain struct {
 	Database *badger.DB
 }
 
-type Block struct {
-	Hash         []byte
-	Data         []byte
-	PreviousHash []byte
-	Nonce        int
-}
-
 // AddBlock appends a new block to the blockchain.
 func (f *FacadeType) AddBlock(data string) {
 	var lastHash []byte
