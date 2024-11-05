@@ -1,27 +1,6 @@
-package quicksort
+package sorting
 
-func QuickSort(arr []int) []int {
-	if arr == nil {
-		// TODO can be replaced for logging.Error
-		// TODO after singleton refactor
-		panic("\nArray in QUICKSORT is empty!\n")
-	}
-
-	return quickSortLauncher(arr, 0, len(arr)-1)
-}
-
-func quickSortLauncher(arr []int, low, high int) []int {
-	if low < high {
-		arr, p := partition(arr, low, high)
-		// NOTE we simply divide into smaller
-		// NOTE segments on left and right side
-		quickSortLauncher(arr, low, p-1)
-		quickSortLauncher(arr, p+1, high)
-	}
-	return arr
-}
-
-func partition(arr []int, low, high int) ([]int, int) {
+func partition(arr []int, low, high int) int {
 
 	// NOTE  take the last number in the array
 	pivot := arr[high]
@@ -44,5 +23,5 @@ func partition(arr []int, low, high int) ([]int, int) {
 	}
 
 	arr[i], arr[high] = arr[high], arr[i]
-	return arr, i
+	return i
 }
