@@ -1,17 +1,12 @@
 package blockchain
 
 import (
-	"blockchain/pkg/logging"
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
 	"encoding/binary"
 	"math"
 	"math/big"
-)
-
-var (
-	info = logging.GetLoggerInstance(logging.INFO)
 )
 
 // NOTE architecture structure to work over same instances

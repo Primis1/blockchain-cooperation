@@ -1,120 +1,248 @@
-package blockchain
-
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/gob"
-	"log"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"github.com/dgraph-io/badger"
 )
 
-// Block represents a block in the blockchain
-type Block struct {
-	Hash         []byte
-	Transactions []*Transaction
-	PrevHash     []byte
-	Nonce        int
+// Repository interface defines all data access operations
+type BlockchainRepository interface {
+	SaveBlock(block *Block) error
+	GetBlockByHash(hash []byte) (*Block, error)
+	GetLastHash() ([]byte, error)
+	SaveLastHash(hash []byte) error
+	FindUnspentTransactions(address string) ([]Transaction, error)
+	FindUTXO(address string) ([]TxOutput, error)
+	FindSpendableOutputs(address string, amount int) (int, map[string][]int, error)
+	Close() error
 }
 
-// BlockFactory handles the creation of different types of blocks
-type BlockFactory struct {
-	powFactory *ProofOfWorkFactory
+// Concrete repository implementation using BadgerDB
+type BadgerBlockchainRepository struct {
+	db *badger.DB
 }
 
-// NewBlockFactory creates a new instance of BlockFactory
-func NewBlockFactory() *BlockFactory {
-	return &BlockFactory{
-		powFactory: &ProofOfWorkFactory{},
-	}
-}
+// Repository constructor
+func NewBlockchainRepository(dbPath string) (*BadgerBlockchainRepository, error) {
+	opts := badger.DefaultOptions
+	opts.Dir = dbPath
+	opts.ValueDir = dbPath
 
-// BlockConfig contains configuration for block creation
-type BlockConfig struct {
-	Transactions []*Transaction
-	PrevHash     []byte
-	Difficulty   int
-}
-
-// CreateBlock creates a new regular block with provided configuration
-func (f *BlockFactory) CreateBlock(config BlockConfig) *Block {
-	block := &Block{
-		Hash:         []byte{},
-		Transactions: config.Transactions,
-		PrevHash:     config.PrevHash,
-		Nonce:        0,
+	db, err := badger.Open(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Create and run proof of work
-	pow := NewProof(block)
-	nonce, hash := pow.Run()
-
-	block.Hash = hash[:]
-	block.Nonce = nonce
-
-	return block
+	return &BadgerBlockchainRepository{
+		db: db,
+	}, nil
 }
 
-// CreateGenesisBlock creates a genesis block with a coinbase transaction
-func (f *BlockFactory) CreateGenesisBlock(coinbaseTx *Transaction) *Block {
-	return f.CreateBlock(BlockConfig{
-		Transactions: []*Transaction{coinbaseTx},
-		PrevHash:     []byte{},
+// SaveBlock persists a block to the database
+func (r *BadgerBlockchainRepository) SaveBlock(block *Block) error {
+	return r.db.Update(func(txn *badger.Txn) error {
+		if block == nil {
+			return errors.New("cannot save nil block")
+		}
+
+		serializedBlock := block.serialize()
+		if err := txn.Set(block.Hash, serializedBlock); err != nil {
+			return fmt.Errorf("failed to save block: %w", err)
+		}
+
+		return nil
 	})
 }
 
-// ProofOfWorkFactory handles creation of proof of work instances
-type ProofOfWorkFactory struct{}
+// GetBlockByHash retrieves a block by its hash
+func (r *BadgerBlockchainRepository) GetBlockByHash(hash []byte) (*Block, error) {
+	var block *Block
 
-// HashTransactions creates a hash of all transactions in the block
-func (b *Block) HashTransactions() []byte {
-	var txHashes [][]byte
-	var txHash [32]byte
+	err := r.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(hash)
+		if err == badger.ErrKeyNotFound {
+			return fmt.Errorf("block not found")
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get block: %w", err)
+		}
 
-	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		blockData, err := item.ValueCopy(nil)
+		if err != nil {
+			return fmt.Errorf("failed to read block data: %w", err)
+		}
+
+		block = Deserialize(blockData)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-
-	return txHash[:]
+	return block, nil
 }
 
-// Serialize converts a block into bytes
-func (b *Block) Serialize() []byte {
-	var res bytes.Buffer
-	encoder := gob.NewEncoder(&res)
+// GetLastHash retrieves the last hash from the database
+func (r *BadgerBlockchainRepository) GetLastHash() ([]byte, error) {
+	var lastHash []byte
 
-	if err := encoder.Encode(b); err != nil {
-		log.Panic("Failed to serialize block:", err)
-	}
+	err := r.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte("lh"))
+		if err != nil {
+			return fmt.Errorf("failed to get last hash: %w", err)
+		}
 
-	return res.Bytes()
+		lastHash, err = item.ValueCopy(nil)
+		return err
+	})
+
+	return lastHash, err
 }
 
-// DeserializeBlock converts bytes back into a Block
-func DeserializeBlock(data []byte) (*Block, error) {
-	var block Block
+// SaveLastHash saves the last hash to the database
+func (r *BadgerBlockchainRepository) SaveLastHash(hash []byte) error {
+	return r.db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte("lh"), hash)
+		if err != nil {
+			return fmt.Errorf("failed to save last hash: %w", err)
+		}
+		return nil
+	})
+}
 
-	decoder := gob.NewDecoder(bytes.NewReader(data))
-	if err := decoder.Decode(&block); err != nil {
+// FindUnspentTransactions finds all unspent transactions for an address
+func (r *BadgerBlockchainRepository) FindUnspentTransactions(address string) ([]Transaction, error) {
+	var unspentTxs []Transaction
+	spentTXOs := make(map[string][]int)
+
+	lastHash, err := r.GetLastHash()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get last hash: %w", err)
+	}
+
+	currentHash := lastHash
+
+	for len(currentHash) > 0 {
+		block, err := r.GetBlockByHash(currentHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get block: %w", err)
+		}
+
+		for _, tx := range block.Transactions {
+			txID := hex.EncodeToString(tx.ID)
+
+		Outputs:
+			for outIdx, out := range tx.Outputs {
+				if spentTXOs[txID] != nil {
+					for _, spentOut := range spentTXOs[txID] {
+						if spentOut == outIdx {
+							continue Outputs
+						}
+					}
+				}
+				if out.CanBeUnlocked(address) {
+					unspentTxs = append(unspentTxs, *tx)
+				}
+			}
+
+			if !tx.IsCoinbase() {
+				for _, in := range tx.Inputs {
+					if in.CanUnlock(address) {
+						inTxID := hex.EncodeToString(in.ID)
+						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
+					}
+				}
+			}
+		}
+
+		currentHash = block.PrevHash
+	}
+
+	return unspentTxs, nil
+}
+
+// FindUTXO finds all unspent transaction outputs for an address
+func (r *BadgerBlockchainRepository) FindUTXO(address string) ([]TxOutput, error) {
+	var UTXOs []TxOutput
+
+	unspentTransactions, err := r.FindUnspentTransactions(address)
+	if err != nil {
 		return nil, err
 	}
 
-	return &block, nil
+	for _, tx := range unspentTransactions {
+		for _, out := range tx.Outputs {
+			if out.CanBeUnlocked(address) {
+				UTXOs = append(UTXOs, out)
+			}
+		}
+	}
+
+	return UTXOs, nil
 }
 
-// Example usage:
-/*
-func main() {
-    factory := NewBlockFactory()
-    
-    // Create genesis block
-    coinbaseTx := CoinbaseTx("Genesis", "First Transaction")
-    genesisBlock := factory.CreateGenesisBlock(coinbaseTx)
-    
-    // Create regular block
-    transactions := []*Transaction{...}
-    regularBlock := factory.CreateBlock(BlockConfig{
-        Transactions: transactions,
-        PrevHash:    genesisBlock.Hash,
-    })
+// FindSpendableOutputs finds spendable outputs for an address up to an amount
+func (r *BadgerBlockchainRepository) FindSpendableOutputs(address string, amount int) (int, map[string][]int, error) {
+	unspentOuts := make(map[string][]int)
+	accumulated := 0
+
+	unspentTxs, err := r.FindUnspentTransactions(address)
+	if err != nil {
+		return 0, nil, err
+	}
+
+Work:
+	for _, tx := range unspentTxs {
+		txID := hex.EncodeToString(tx.ID)
+
+		for outIdx, out := range tx.Outputs {
+			if out.CanBeUnlocked(address) && accumulated < amount {
+				accumulated += out.Value
+				unspentOuts[txID] = append(unspentOuts[txID], outIdx)
+
+				if accumulated >= amount {
+					break Work
+				}
+			}
+		}
+	}
+
+	return accumulated, unspentOuts, nil
 }
-*/
+
+// Close closes the database connection
+func (r *BadgerBlockchainRepository) Close() error {
+	return r.db.Close()
+}
+
+// BlockchainService uses the repository
+type BlockchainService struct {
+	repo BlockchainRepository
+}
+
+// NewBlockchainService creates a new blockchain service
+func NewBlockchainService(repo BlockchainRepository) *BlockchainService {
+	return &BlockchainService{
+		repo: repo,
+	}
+}
+
+// AddBlock adds a new block to the blockchain
+func (s *BlockchainService) AddBlock(transactions []*Transaction) error {
+	lastHash, err := s.repo.GetLastHash()
+	if err != nil {
+		return fmt.Errorf("failed to get last hash: %w", err)
+	}
+
+	newBlock := CreateBlock(transactions, lastHash)
+
+	if err := s.repo.SaveBlock(newBlock); err != nil {
+		return fmt.Errorf("failed to save block: %w", err)
+	}
+
+	if err := s.repo.SaveLastHash(newBlock.Hash); err != nil {
+		return fmt.Errorf("failed to save last hash: %w", err)
+	}
+
+	return nil
+}

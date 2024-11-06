@@ -66,6 +66,6 @@ func (tr *Transaction) IsCoinbase() bool {
 func (in *TXI) CanUnlock(data string) bool {
 	return in.Sig == data
 }
-func (out *TXO) CanLock(data string) bool {
+func (out *TXO) CanBeUnlocked(data string) bool {
 	return out.Pubkey == data
 }

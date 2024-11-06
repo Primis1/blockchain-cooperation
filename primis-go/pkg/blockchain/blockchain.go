@@ -2,147 +2,256 @@ package blockchain
 
 import (
 	"blockchain/pkg/utils"
+	"encoding/hex"
+	"os"
 
 	"github.com/dgraph-io/badger"
 )
 
-// FacadeType acts as a mediator, providing a simplified interface to blockchain functionality.
-type FacadeType struct {
-	chain    *BlockChain
-	iterator *BlockChainIterator
+type BlockchainRepository interface {
+	SaveBlock(block *Block) error
+	GetBlockByHash(hash []byte) (*Block, error)
+	GetLastHash() ([]byte, error)
+	SaveLastHash(hash []byte) error
+	FindUnspentTransactions(address string) ([]Transaction, error)
+	FindUTXO(address string) ([]TXO, error)
+	FindSpendableOutputs(address string, amount int) (int, map[string][]int, error)
+}
+
+type BadgerBlockchainRepository struct {
+	db *badger.DB
 }
 
 const (
-	dbPath = "./tmp/blocks"
+	dbPath      = "./tmp/blocks"
+	dbFile      = "./tmp/blocks/MANIFEST"
+	genesisData = "First Transaction from Genesis"
 )
+
+type BlockChain struct {
+	LastHash []byte
+	Database *badger.DB
+}
 
 type BlockChainIterator struct {
 	CurrentHash []byte
 	Database    *badger.DB
 }
 
-// Global instance of FacadeType for easy access
-// var Facade = &FacadeType{}
+func NewBlockchainRepository(dbPath string) *BadgerBlockchainRepository {
 
-// NOTE During writing i yet again found myself, that blockchain is emphasize the "linked list like"
-// NOTE abstractions. Linked-List of Peer's Databases - sounds wonderful
-type BlockChain struct {
-	// NOTE not really get why we use pointer
-	// NOTE to the array, when arrays
-	// NOTE sent-by-reference by default
-	LastHash []byte
-	Database *badger.DB
-}
-
-// AddBlock appends a new block to the blockchain.
-func (f *FacadeType) AddBlock(data string) {
-	var lastHash []byte
-
-	err := f.chain.Database.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("lh"))
-		utils.HandleErr(err)
-
-		err = item.Value(func(val []byte) error {
-			lastHash = append(lastHash, val...)
-			return nil
-		})
-		return err
-	})
-	utils.HandleErr(err)
-
-	newBlock := CreateBlock(data, lastHash)
-
-	err = f.chain.Database.Update(func(txn *badger.Txn) error {
-		err := txn.Set(newBlock.Hash, newBlock.Serialize())
-		utils.HandleErr(err)
-		err = txn.Set([]byte("lh"), newBlock.Hash)
-		f.chain.LastHash = newBlock.Hash
-		return err
-	})
-
-	utils.HandleErr(err)
-}
-
-func (f *FacadeType) Iterator() *BlockChainIterator {
-	iter := &BlockChainIterator{f.chain.LastHash, f.chain.Database}
-	f.iterator = iter
-	return f.iterator
-}
-
-func (f *BlockChainIterator) Next() *Block {
-	var block *Block
-
-	err := f.Database.View(func(x *badger.Txn) error {
-		item, err := x.Get(f.CurrentHash)
-
-		utils.HandleErr(err)
-
-		err = item.Value(func(t []byte) error {
-			block = block.Deserialize(t)
-			return nil
-		})
-		return err
-	})
-	utils.HandleErr(err)
-	f.CurrentHash = block.PreviousHash
-
-	return block
-}
-
-// InitBlockChain initializes the blockchain with the genesis block.
-func (f *FacadeType) InitBlockChain() *BlockChain {
-	var lastHash []byte
-
-	// NOTE we specify where our file have to stored
-	// NOTE DefaultOptions is a struct btw
-	opts := badger.Options{}
-	opts.Dir = dbPath
-	opts.ValueDir = dbPath
-
+	// NOTE we should set define the "type",
+	// NOTE over which our DB will created
+	opts := badger.DefaultOptions(dbPath)
+	// NOTE we put these parameters, and retrieve DB object
 	db, err := badger.Open(opts)
 	utils.HandleErr(err)
 
-	// NOTE Update() allows us to read/write to DB
-	// NOTE View() only read from db
-	err = db.Update(func(txn *badger.Txn) error {
-		// NOTE 1. Check the existence of blockchain
+	return &BadgerBlockchainRepository{db: db}
+}
 
-		// NOTE 1. If present create a new BC instance in memory
-		// NOTE 2. Get the last hash from the disk DB,
-		// NOTE 3.  push it into instance of created BC
+func DBexists() bool {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		return false
+	}
 
-		// NOTE 2. If not:
+	return true
+}
 
-		// NOTE 1. Create a Genesis block
-		// NOTE 2. Store that in DB
-		// NOTE 3. Take hash from DB
-
-		if _, err := txn.Get([]byte("ln")); err == badger.ErrKeyNotFound {
-			info.Info("No existing blockchain found")
-			genesis := GenesisBlock()
-			info.Info("Genesis proved")
-			err = txn.Set(genesis.Hash, genesis.Serialize())
-			utils.HandleErr(err)
-			err = txn.Set([]byte("lh"), genesis.Hash)
-			lastHash = genesis.Hash
-
-			return err
-		} else {
-			item, err := txn.Get([]byte("lh"))
-			utils.HandleErr(err)
-			err = item.Value(func(val []byte) error {
-				lastHash = append([]byte{}, val...) // Copy the value to lastHash
-				return nil
-			})
-			utils.HandleErr(err)
-
-			return err
+func (r *BadgerBlockchainRepository) SaveBlock(block *Block) error {
+	return r.db.Update(func(txn *badger.Txn) error {
+		// NOTE if passed block is empty
+		if block == nil {
+			utils.HandleErr("can't save nil block")
 		}
+
+		serializedBlock := block.serialize()
+
+		err := txn.Set(block.Hash, serializedBlock)
+		utils.HandleErr(err)
+
+		return nil
+	})
+}
+
+func (r *BadgerBlockchainRepository) GetBlockByHash(hash []byte) *Block {
+	var block *Block
+
+	// NOTE reading access to the block
+	err := r.db.View(func(t *badger.Txn) error {
+		// NOTE actual look up by hash
+		item, err := t.Get(hash)
+
+		// NOTE bunch of checks
+		if err == badger.ErrKeyNotFound {
+			utils.HandleErr("block is not found")
+		}
+		utils.HandleErr(err)
+
+		// NOTE copy value for return in immutable way
+		blockData, err := item.ValueCopy(nil)
+		utils.HandleErr(err)
+
+		block = deserialize(blockData)
+		return nil
 	})
 
 	utils.HandleErr(err)
+	return block
+}
 
-	blockchain := BlockChain{lastHash, db}
+func (r *BadgerBlockchainRepository) GetLastHash() ([]byte, error) {
+	var lhash []byte
 
-	return &blockchain
+	// NOTE the same thing like in GBBH, buy
+	// NOTE retrieving "lh" hash value
+	err := r.db.View(func(t *badger.Txn) error {
+		item, err := t.Get([]byte("lh"))
+		utils.HandleErr("failed to get last hash")
+
+		lhash = item.KeyCopy(nil)
+		return err
+	})
+
+	return lhash, err
+}
+
+func (r *BadgerBlockchainRepository) SaveLastHash(hash []byte) error {
+	return r.db.Update(func(t *badger.Txn) error {
+		// NOTE badger is key-value DB, so we re-assign the last
+		// NOTE "lh" hash to the argument; all done in bytes - bla bla bla
+		err := t.Set([]byte("lh"), hash)
+		utils.HandleErr(err)
+
+		return nil
+	})
+}
+
+func (r *BadgerBlockchainRepository) FindUniqueTransaction(address string) ([]Transaction, error) {
+	var unspentT []Transaction
+
+	spentMap := make(map[string][]int)
+	// NOTE we get the hash, i.e the unique parameter
+	// NOTE of the block
+	lastHash, err := r.GetLastHash()
+	utils.HandleErr(err)
+
+	currentHash := lastHash
+	for len(currentHash) > 0 {
+		// NOTE we retrieve the block by its hash
+		block := r.GetBlockByHash(currentHash)
+
+		for _, tx := range block.Transactions {
+			txID := hex.EncodeToString(tx.ID)
+
+			// NOTE label to terminate loop
+		Output:
+			// NOTE we iterate over list of transaction of user
+			// NOTE and then store 'em in the hashmap
+			for outIndex, out := range tx.Output {
+				if spentMap[txID] != nil {
+					for _, spentOut := range spentMap[txID] {
+						if spentOut == outIndex {
+							continue Output
+						}
+					}
+				}
+				if out.CanBeUnlocked(address) {
+					unspentT = append(unspentT, *tx)
+				}
+			}
+
+			// NOTE after we append found transaction
+			// NOTE from hashmap to slice
+
+			if !tx.IsCoinbase() {
+				for _, in := range tx.Inputs {
+					if in.CanUnlock(address) {
+						inTxID := hex.EncodeToString(in.ID)
+						spentMap[inTxID] = append(spentMap[inTxID], in.Out)
+					}
+				}
+			}
+		}
+
+		currentHash = block.PrevHash
+	}
+
+	return unspentT, nil
+}
+
+func (r *BadgerBlockchainRepository) FindUnspentTransactionsOutputs(address string) []TXO {
+	var UTXs []TXO
+
+	// NOTE look up for transaction by hash
+	unspentTransactions, err := r.FindUniqueTransaction(address)
+	utils.HandleErr(err)
+
+	for _, t := range unspentTransactions {
+		for _, out := range t.Output {
+
+			if out.CanBeUnlocked(address) {
+				UTXs = append(UTXs, out)
+			}
+		}
+	}
+
+	return UTXs
+}
+
+func (r *BadgerBlockchainRepository) FindSpendableOutputs(address string, amount int) (int, map[string][]int) {
+	unspnedable := make(map[string][]int)
+	accumulated := 0
+
+	unspentT, err := r.FindUniqueTransaction(address)
+	utils.HandleErr(err)
+
+	// label
+Work:
+	for _, t := range unspentT {
+		txID := hex.EncodeToString(t.ID)
+
+		for outIndex, out := range t.Output {
+			// NOTE compare the does amount valid for transfer or not
+			if out.CanBeUnlocked(address) && accumulated < amount {
+				accumulated += out.Value
+				unspnedable[txID] = append(unspnedable[txID], outIndex)
+
+				// NOTE if available amount is smaller, then kick him out!
+				if accumulated >= amount {
+					break Work
+				}
+			}
+		}
+	}
+
+	return accumulated, unspnedable
+}
+
+type BlockchainService struct {
+	repo    BlockchainRepository
+	factory *BlockFactory // Add factory here
+}
+
+func NewBlockchainService(repo BlockchainRepository) *BlockchainService {
+	return &BlockchainService{
+		repo:    repo,
+		factory: NewBlockFactory(),
+	}
+}
+
+func (s *BlockchainService) AddBlock(transactions []*Transaction) error {
+	lastHash, err := s.repo.GetLastHash()
+	if err != nil {
+		return err
+	}
+
+	// Use factory to create block
+	newBlock := s.factory.CreateBlock(BlockConfig{
+		Transaction: transactions,
+		PrevHash:    lastHash,
+	})
+
+	// Use repository to save block
+	return s.repo.SaveBlock(newBlock)
 }
