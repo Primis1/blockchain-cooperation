@@ -1,24 +1,33 @@
 package blockchain
 
 import (
+	"blockchain/pkg/logging"
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
 	"encoding/gob"
 )
 
+var (
+	info = logging.GetLoggerInstance(logging.INFO)
+)
+
 type Block struct {
 	Hash         []byte
 	Transactions []*Transaction
 	PrevHash     []byte
-	Nonce        int
+	// NOTE field that indicates the "difficulty"
+	Nonce int
 }
 
 type ProofOfWorkFactory struct{}
 
+// NOTE struct for our abstract factory and factory object initialization
 type BlockFactory struct {
 	powFactory *ProofOfWorkFactory
 }
+
+// NOTE configuration for our factory
 
 func NewBlockFactory() *BlockFactory {
 	return &BlockFactory{
@@ -69,10 +78,9 @@ func (f *BlockFactory) CreateGenesis(coinbase *Transaction) *Block {
 		Transaction: []*Transaction{coinbase},
 		PrevHash:    []byte{},
 	})
-
 }
 
-func (b *Block) Serialize() []byte {
+func (b *Block) serialize() []byte {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
 
@@ -83,7 +91,7 @@ func (b *Block) Serialize() []byte {
 	return res.Bytes()
 }
 
-func Deserialize(data []byte) *Block {
+func deserialize(data []byte) *Block {
 	var block Block
 
 	decoder := gob.NewDecoder(bytes.NewReader(data))
@@ -94,5 +102,3 @@ func Deserialize(data []byte) *Block {
 
 	return &block
 }
-
-
