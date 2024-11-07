@@ -29,7 +29,7 @@ type BlockFactory struct {
 
 // NOTE configuration for our factory
 
-func NewBlockFactory() *BlockFactory {
+func newBlockFactory() *BlockFactory {
 	return &BlockFactory{
 		powFactory: &ProofOfWorkFactory{},
 	}
@@ -41,8 +41,6 @@ type BlockConfig struct {
 	Diff        int
 }
 
-// NOTE GenesisBlock creates the initial block in the blockchain.
-// NOTE We should declare serializer for default GO DB
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte
 	var txHash [32]byte

@@ -10,12 +10,12 @@ import (
 
 type BlockchainRepository interface {
 	SaveBlock(block *Block) error
-	GetBlockByHash(hash []byte) (*Block, error)
+	GetBlockByHash(hash []byte) *Block
 	GetLastHash() ([]byte, error)
 	SaveLastHash(hash []byte) error
-	FindUnspentTransactions(address string) ([]Transaction, error)
-	FindUTXO(address string) ([]TXO, error)
-	FindSpendableOutputs(address string, amount int) (int, map[string][]int, error)
+	FindUnspentTransactionsOutputs(address string) []TXO
+	FindUniqueTransaction(address string) ([]Transaction, error)
+	FindSpendableOutputs(address string, amount int) (int, map[string][]int)
 }
 
 type BadgerBlockchainRepository struct {
@@ -38,13 +38,18 @@ type BlockChainIterator struct {
 	Database    *badger.DB
 }
 
-func NewBlockchainRepository(dbPath string) *BadgerBlockchainRepository {
+func NewBlockchainRepository() *BadgerBlockchainRepository {
+
+	if !DBexists() {
+		os.MkdirAll(dbPath, os.ModePerm)
+	}
 
 	// NOTE we should set define the "type",
 	// NOTE over which our DB will created
 	opts := badger.DefaultOptions(dbPath)
 	// NOTE we put these parameters, and retrieve DB object
 	db, err := badger.Open(opts)
+
 	utils.HandleErr(err)
 
 	return &BadgerBlockchainRepository{db: db}
@@ -229,29 +234,32 @@ Work:
 }
 
 type BlockchainService struct {
-	repo    BlockchainRepository
-	factory *BlockFactory // Add factory here
+	Repo    BlockchainRepository
+	Factory *BlockFactory // Add Factory here
 }
 
 func NewBlockchainService(repo BlockchainRepository) *BlockchainService {
 	return &BlockchainService{
-		repo:    repo,
-		factory: NewBlockFactory(),
+		Repo:    repo,
+		Factory: newBlockFactory(),
 	}
 }
 
 func (s *BlockchainService) AddBlock(transactions []*Transaction) error {
-	lastHash, err := s.repo.GetLastHash()
+	lastHash, err := s.Repo.GetLastHash()
 	if err != nil {
 		return err
 	}
 
-	// Use factory to create block
-	newBlock := s.factory.CreateBlock(BlockConfig{
+	// Use Factory to create block
+	newBlock := s.Factory.CreateBlock(BlockConfig{
 		Transaction: transactions,
 		PrevHash:    lastHash,
 	})
 
-	// Use repository to save block
-	return s.repo.SaveBlock(newBlock)
+	if err := s.Repo.SaveBlock(newBlock); err != nil {
+		return err
+	}
+
+	return s.Repo.SaveLastHash(newBlock.Hash)
 }

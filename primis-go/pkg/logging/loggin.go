@@ -24,10 +24,23 @@ const (
 	ERR
 )
 
-type Application struct {
-	Level    logLevel
+type Skeleton struct {
+	Level logLevel
+}
+
+type ErrorApplication struct {
+	Skeleton
 	errorLog *log.Logger
-	infoLog  *log.Logger
+}
+type InfoApplication struct {
+	Skeleton
+	infoLog *log.Logger
+}
+
+type Application struct {
+	Level    Skeleton
+	errorLog *ErrorApplication
+	infoLog  *InfoApplication
 }
 
 var InfoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
@@ -68,7 +81,7 @@ func (l *Application) Info(msg any, args ...any) {
 	if l.Level == INFO {
 		file, line := getCaller()
 		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
-		l.infoLog.Printf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+		l.infoLog.Printf("\n[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
 	}
 }
 

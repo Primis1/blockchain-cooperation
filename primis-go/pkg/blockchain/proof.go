@@ -4,42 +4,46 @@ import (
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
-	"encoding/binary"
 	"math"
 	"math/big"
 )
 
+// NOTE take the data from the block
+// NOTE create a nonce
+// NOTE create a hash of the data + the counter
+// NOTE validates hash. Should met requirements
+
+// NOTE Requirements - first few bytes should contain 0s
+
 // NOTE architecture structure to work over same instances
+const Diff = 12
+
 type ProfOW struct {
 	Block  *Block
 	Target *big.Int
 }
-
-const Diff = 18
 
 // NOTE first part of an algorithm, we tale a blocks hash
 // NOTE and compare it with `target`, to create a new hash
 // NOTE Just like in hash generation function in `blockchain`
 func NewProof(b *Block) *ProfOW {
 	target := big.NewInt(1)
-
 	target.Lsh(target, uint(256-Diff))
+
 	return &ProfOW{
 		b,
 		target,
 	}
-
 }
 
 func (pow *ProfOW) InitData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			// NOTE We take a PreviousHash & Data (its bytes)
-			// NOTE and join 'em together in the
-			pow.Block.PreviousHash,
-			pow.Block.Data,
-			ToHex(int64(nonce)),
-			ToHex(int64(Diff)),
+			pow.Block.PrevHash,
+			pow.Block.HashTransactions(),
+			utils.ToHex(int64(nonce)),
+			utils.ToHex(int64(Diff)),
 		},
 		// NOTE required to make cohesive set of bytes
 		[]byte{},
@@ -70,7 +74,6 @@ func (pow *ProfOW) Run() (int, []byte) {
 		hash := sha.ComputeHash(data)
 
 		info.Info("\r%x", hash)
-
 		intHash.SetBytes(hash[:])
 
 		// NOTE compare prof of work of target and
@@ -99,14 +102,4 @@ func (pow *ProfOW) Validate() bool {
 
 	// compare the hashes
 	return intHash.Cmp(pow.Target) == -1
-}
-
-func ToHex(num int64) []byte {
-	// NOTE binary buffer
-	buff := new(bytes.Buffer)
-
-	err := binary.Write(buff, binary.BigEndian, num)
-	utils.HandleErr(err)
-
-	return buff.Bytes()
 }

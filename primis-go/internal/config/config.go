@@ -1,11 +1,15 @@
 package config
 
-import "os"
+import (
+	"blockchain/pkg/utils"
+	"os"
+)
 
 func MustEnvironment() {
 	err := os.Setenv("KEY_WORD", "primis-go")
+	utils.HandleErr(err)
 
-	if err != nil {
-		panic(err)
-	}
+	os.Setenv("dbPath", "./tmp/blocks")
+	os.Setenv("dbFile", "./tmp/blocks/MANIFEST")
+	os.Setenv("genesisData", ".")
 }

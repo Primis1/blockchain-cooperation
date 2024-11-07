@@ -16,7 +16,7 @@ func init() {
 }
 
 func main() {
-	cli := cli.CommandLine{}
-
+	cli := cli.NewCLI()
 	cli.Run()
+
 }
