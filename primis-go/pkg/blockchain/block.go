@@ -1,15 +1,10 @@
 package blockchain
 
 import (
-	"blockchain/pkg/logging"
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
 	"encoding/gob"
-)
-
-var (
-	info = logging.GetLoggerInstance(logging.INFO)
 )
 
 type Block struct {

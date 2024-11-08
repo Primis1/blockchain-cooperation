@@ -1,6 +1,3 @@
-// TODO  restrict access for wrong logging type
-// TODO  if INFO is selected, then only info logger can be selected!
-
 package logging
 
 import (
@@ -15,8 +12,9 @@ import (
 type logLevel int
 
 var (
-	once           sync.Once
-	loggerInstance *Application
+	once          sync.Once
+	infoInstance  *InfoApplication
+	errorInstance *ErrorApplication
 )
 
 const (
@@ -24,41 +22,59 @@ const (
 	ERR
 )
 
-type Skeleton struct {
-	Level logLevel
+type skeleton struct {
+	level logLevel
 }
 
 type ErrorApplication struct {
-	Skeleton
-	errorLog *log.Logger
+	skeleton
+	logger *log.Logger
 }
 type InfoApplication struct {
-	Skeleton
-	infoLog *log.Logger
+	skeleton
+	logger *log.Logger
 }
 
-type Application struct {
-	Level    Skeleton
-	errorLog *ErrorApplication
-	infoLog  *InfoApplication
-}
+var infoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
+var errorLog = log.New(os.Stderr, "ERROR: \t", log.Ltime)
 
-var InfoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
-var ErrorLog = log.New(os.Stderr, "ERROR: \t", log.Ltime)
-
-var path string
-
-func GetLoggerInstance(Level logLevel) *Application {
+func newInfoLogger() *InfoApplication {
 	once.Do(func() {
-		fmt.Println("Logger instance is created")
-		loggerInstance = &Application{
-			Level:    Level,
-			errorLog: ErrorLog,
-			infoLog:  InfoLog,
+		infoInstance = &InfoApplication{
+			logger: infoLog,
 		}
 	})
-	return loggerInstance
+	return infoInstance
+}
 
+func newErrorLogger() *ErrorApplication {
+	once.Do(func() {
+		errorInstance = &ErrorApplication{
+			logger: errorLog,
+		}
+	})
+	return errorInstance
+}
+func (l *InfoApplication) Info(msg any, args ...any) {
+
+	compiled := assertion(msg)
+
+	if l.level == INFO {
+		file, line := getCaller()
+		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
+		l.logger.Printf("\n[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+	}
+}
+
+func (l *ErrorApplication) Error(msg any, args ...any) {
+
+	converted := assertion(msg)
+	if l.level == ERR {
+		file, line := getCaller()
+		formattedMessage := fmt.Sprintf(converted, args...) // Format the message using the provided arguments
+
+		l.logger.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
+	}
 }
 
 func assertion(msg any) string {
@@ -72,28 +88,6 @@ func assertion(msg any) string {
 	}
 
 	return comp
-}
-
-func (l *Application) Info(msg any, args ...any) {
-
-	compiled := assertion(msg)
-
-	if l.Level == INFO {
-		file, line := getCaller()
-		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
-		l.infoLog.Printf("\n[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
-	}
-}
-
-func (l *Application) Error(msg any, args ...any) {
-
-	converted := assertion(msg)
-	if l.Level == ERR {
-		file, line := getCaller()
-		formattedMessage := fmt.Sprintf(converted, args...) // Format the message using the provided arguments
-
-		l.errorLog.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
-	}
 }
 
 func getCaller() (string, int) {
@@ -116,5 +110,5 @@ func getCaller() (string, int) {
 	return file, line
 }
 
-var Info = GetLoggerInstance(INFO)
-var Err = GetLoggerInstance(ERR)
+var Info = newInfoLogger()
+var Err = newErrorLogger()
