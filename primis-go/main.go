@@ -11,8 +11,9 @@ import (
 func init() {
 	// NOTE initialize env variables
 	config.MustEnvironment()
-	logging.GetLoggerInstance(logging.ERR)
-	logging.GetLoggerInstance(logging.INFO)
+	
+	logging.Info.Info("log instance")
+	logging.Err.Error("error instance")
 }
 
 func main() {

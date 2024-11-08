@@ -6,6 +6,7 @@ import (
 	"blockchain/pkg/utils"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 )

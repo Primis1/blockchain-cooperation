@@ -91,7 +91,7 @@ func assertion(msg any) string {
 }
 
 func getCaller() (string, int) {
-	key := os.Getenv("KEY_WORD") // assign your folder name, so we can crop no-reqired part
+	key := os.Getenv("KEY_WORD") // assign your folder name, so we can crop no-required part
 
 	_, file, line, ok := runtime.Caller(2)
 	if !ok {

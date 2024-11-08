@@ -4,6 +4,7 @@ import (
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
+	"log"
 	"math"
 	"math/big"
 )
@@ -73,7 +74,7 @@ func (pow *ProfOW) Run() (int, []byte) {
 		data := pow.InitData(nonce)
 		hash := sha.ComputeHash(data)
 
-		info.Info("\r%x", hash)
+		log.Printf("\r%x", hash)
 		intHash.SetBytes(hash[:])
 
 		// NOTE compare prof of work of target and
@@ -85,7 +86,7 @@ func (pow *ProfOW) Run() (int, []byte) {
 		}
 	}
 
-	info.Info("\n")
+	log.Println()
 
 	return nonce, hash[:]
 }
