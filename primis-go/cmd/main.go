@@ -1,8 +1,8 @@
 package main
 
 import (
-	"blockchain/internal/cli"
 	"blockchain/internal/config"
+	"blockchain/pkg/blockchain/wallet"
 	"blockchain/pkg/logging"
 )
 
@@ -11,13 +11,11 @@ import (
 func init() {
 	// NOTE initialize env variables
 	config.MustEnvironment()
-	
+
 	logging.Info.Info("log instance")
-	logging.Err.Error("error instance")
 }
 
 func main() {
-	cli := cli.NewCLI()
-	cli.Run()
-
+	cli := wallet.MakeWallet()
+	cli.Address()
 }

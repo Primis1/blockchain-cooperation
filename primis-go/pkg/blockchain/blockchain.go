@@ -22,12 +22,6 @@ type BadgerBlockchainRepository struct {
 	db *badger.DB
 }
 
-const (
-	dbPath      = "./tmp/blocks"
-	dbFile      = "./tmp/blocks/MANIFEST"
-	genesisData = "First Transaction from Genesis"
-)
-
 type BlockChain struct {
 	LastHash []byte
 	Database *badger.DB
@@ -37,6 +31,10 @@ type BlockChainIterator struct {
 	CurrentHash []byte
 	Database    *badger.DB
 }
+
+var (
+	dbPath = os.Getenv("dbPath")
+)
 
 func NewBlockchainRepository() *BadgerBlockchainRepository {
 
@@ -56,7 +54,7 @@ func NewBlockchainRepository() *BadgerBlockchainRepository {
 }
 
 func DBexists() bool {
-	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		return false
 	}
 

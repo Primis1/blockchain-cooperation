@@ -9,106 +9,78 @@ import (
 	"sync"
 )
 
-type logLevel int
-
+// variables for singletons and instances
 var (
-	once          sync.Once
+	infoOnce      sync.Once
+	errorOnce     sync.Once
 	infoInstance  *InfoApplication
 	errorInstance *ErrorApplication
 )
 
-const (
-	INFO logLevel = iota
-	ERR
-)
-
-type skeleton struct {
-	level logLevel
+// types
+type InfoApplication struct {
+	log *log.Logger
 }
 
 type ErrorApplication struct {
-	skeleton
-	logger *log.Logger
-}
-type InfoApplication struct {
-	skeleton
-	logger *log.Logger
+	log *log.Logger
 }
 
-var infoLog = log.New(os.Stdout, "INFO: \t", log.Ltime)
-var errorLog = log.New(os.Stderr, "ERROR: \t", log.Ltime)
+// NOTE base logger instances
+var infoLog = log.New(os.Stdin, "INFO \n", log.Ltime)
+var errorLog = log.New(os.Stderr, "INFO \n", log.Ltime)
 
-func newInfoLogger() *InfoApplication {
-	once.Do(func() {
+// NOTE info and error singletons
+func InfoSingleTon() *InfoApplication {
+	infoOnce.Do(func() {
 		infoInstance = &InfoApplication{
-			logger: infoLog,
+			log: infoLog,
 		}
 	})
+
 	return infoInstance
 }
 
-func newErrorLogger() *ErrorApplication {
-	once.Do(func() {
+func ErrorSingleTon() *ErrorApplication {
+	errorOnce.Do(func() {
 		errorInstance = &ErrorApplication{
-			logger: errorLog,
+			log: errorLog,
 		}
 	})
+
 	return errorInstance
 }
+
 func (l *InfoApplication) Info(msg any, args ...any) {
-
-	compiled := assertion(msg)
-
-	if l.level == INFO {
-		file, line := getCaller()
-		formattedMessage := fmt.Sprintf(compiled, args...) // Format the message using the provided arguments
-		l.logger.Printf("\n[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
-	}
+	// assertion
+	asserted := fmt.Sprint(msg)
+	file, line := getCaller()
+	formatted := fmt.Sprintf(asserted, args...)
+	l.log.Printf("[%s : %d] \n\n%s\n\n", file, line, formatted)
 }
 
 func (l *ErrorApplication) Error(msg any, args ...any) {
-
-	converted := assertion(msg)
-	if l.level == ERR {
-		file, line := getCaller()
-		formattedMessage := fmt.Sprintf(converted, args...) // Format the message using the provided arguments
-
-		l.logger.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formattedMessage)
-	}
-}
-
-func assertion(msg any) string {
-	var comp string
-
-	switch v := msg.(type) {
-	case string:
-		comp = v
-	default:
-		comp = fmt.Sprint(v)
-	}
-
-	return comp
+	asserted := fmt.Sprint(msg)
+	file, line := getCaller()
+	formatted := fmt.Sprintf(asserted, args...)
+	l.log.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formatted)
 }
 
 func getCaller() (string, int) {
-	key := os.Getenv("KEY_WORD") // assign your folder name, so we can crop no-required part
+
+	projectRootFolder := os.Getenv("KEY_WORD")
 
 	_, file, line, ok := runtime.Caller(2)
 	if !ok {
-		log.Fatal("runtime caller has an error")
+		log.Fatalln("caller can not be defined")
 	}
 
-	if key == "" {
-		fmt.Print("key is empty")
-		return file, line // Return without modifying if key is not set
-	}
-
-	regExp, _ := regexp.Compile(".*" + regexp.QuoteMeta(key)) // regex for deleting left side
-
-	file = regExp.ReplaceAllString(file, key)
-
-	return file, line
+	r, _ := regexp.Compile(".*" + regexp.QuoteMeta(projectRootFolder))
+	filterFileString := r.ReplaceAllString(file, projectRootFolder)
+	return filterFileString, line
 }
 
-var Info = newInfoLogger()
-var Err = newErrorLogger()
+var (
+	Info  = InfoSingleTon()
+	Error = ErrorSingleTon()
+)

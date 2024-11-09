@@ -49,10 +49,15 @@ func (c *CreateBlockchainCommand) Execute() error {
 	block := c.facade.service.Factory.CreateGenesis(coinbase)
 
 	err := c.facade.repo.SaveBlock(block)
-	errMsg.Error("\nfailed to save genesis block \n", err)
+	if err != nil {
+		errMsg.Error("\nfailed to save genesis block \n", err)
+	}
 
 	err = c.facade.repo.SaveLastHash(block.Hash)
-	errMsg.Error("\nfailed to save last hash\n", err)
+
+	if err != nil {
+		errMsg.Error("\nfailed to save last hash\n", err)
+	}
 
 	info.Info("Finished creating blockchain")
 	return nil
