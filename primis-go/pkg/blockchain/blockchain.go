@@ -89,8 +89,6 @@ func (r *BadgerBlockchainRepository) GetBlockByHash(hash []byte) *Block {
 		if err == badger.ErrKeyNotFound {
 			utils.HandleErr("block is not found")
 		}
-		utils.HandleErr(err)
-
 		// NOTE copy value for return in immutable way
 		blockData, err := item.ValueCopy(nil)
 		utils.HandleErr(err)

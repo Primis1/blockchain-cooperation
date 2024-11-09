@@ -7,6 +7,7 @@ import (
 	"encoding/gob"
 )
 
+// NOTE each block contains huge number of transaction, to be created
 type Block struct {
 	Hash         []byte
 	Transactions []*Transaction
@@ -15,19 +16,13 @@ type Block struct {
 	Nonce int
 }
 
-type ProofOfWorkFactory struct{}
-
 // NOTE struct for our abstract factory and factory object initialization
-type BlockFactory struct {
-	powFactory *ProofOfWorkFactory
-}
+type BlockFactory struct{}
 
 // NOTE configuration for our factory
 
 func newBlockFactory() *BlockFactory {
-	return &BlockFactory{
-		powFactory: &ProofOfWorkFactory{},
-	}
+	return &BlockFactory{}
 }
 
 type BlockConfig struct {
@@ -36,16 +31,18 @@ type BlockConfig struct {
 	Diff        int
 }
 
+// NOTE we hash each transaction of the block, transaction ID
 func (b *Block) HashTransactions() []byte {
-	var txHashes [][]byte
-	var txHash [32]byte
+	var hashes [][]byte
+	var hash [32]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		hashes = append(hashes, tx.ID)
 	}
-	txHash = sha.ComputeHash(bytes.Join(txHashes, []byte{}))
 
-	return txHash[:]
+	hash = sha.ComputeHash(bytes.Join(hashes, []byte{}))
+
+	return hash[:]
 }
 
 // NOTE CreateBlock generates a new block with provided data and previous hash.

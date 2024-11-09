@@ -10,6 +10,7 @@ func MustEnvironment() {
 	utils.HandleErr(err)
 
 	os.Setenv("dbPath", "../tmp/blocks")
+	os.Setenv("wallets", "../tmp/wallet.data")
 	os.Setenv("dbFile", "../tmp/blocks/MANIFEST")
 	os.Setenv("genesisData", ".")
 }

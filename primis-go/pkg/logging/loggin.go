@@ -27,8 +27,8 @@ type ErrorApplication struct {
 }
 
 // NOTE base logger instances
-var infoLog = log.New(os.Stdin, "INFO \n", log.Ltime)
-var errorLog = log.New(os.Stderr, "INFO \n", log.Ltime)
+var infoLog = log.New(os.Stdin, "INFO \t", log.Ltime)
+var errorLog = log.New(os.Stderr, "INFO \t", log.Ltime)
 
 // NOTE info and error singletons
 func InfoSingleTon() *InfoApplication {

@@ -11,7 +11,7 @@ import (
 	"runtime"
 )
 
-var errMsg = logging.Err
+var errMsg = logging.Error
 var info = logging.Info
 
 type Command interface {
@@ -161,7 +161,7 @@ func (c *GetBalanceCommand) Validate() error {
 	return nil
 }
 
-func (f *CommandFactory) CreateCommand(args []string) (Command, error) {
+func (f *CLI) CreateCommand(args []string) (Command, error) {
 	if len(args) < 2 {
 		errMsg.Error("no command provided")
 		return nil, nil
@@ -212,17 +212,10 @@ func (f *CommandFactory) CreateCommand(args []string) (Command, error) {
 }
 
 type CLI struct {
-	factory *CommandFactory
-}
-
-type CommandFactory struct {
 	facade *CLIFacade
 }
 
 // NOTE we build a factory from the facade
-func NewCommandFactory(facade *CLIFacade) *CommandFactory {
-	return &CommandFactory{facade: facade}
-}
 
 func NewBlockchainFacade() *CLIFacade {
 	repo := blockchain.NewBlockchainRepository()
@@ -235,10 +228,10 @@ func NewBlockchainFacade() *CLIFacade {
 }
 
 func NewCLI() *CLI {
-	facade := NewBlockchainFacade()
+	dunno := NewBlockchainFacade()
 
 	return &CLI{
-		factory: NewCommandFactory(facade),
+		facade: dunno,
 	}
 }
 
@@ -256,7 +249,7 @@ func (cli *CLI) Run() {
 		runtime.Goexit()
 	}
 
-	cmd, err := cli.factory.CreateCommand(os.Args)
+	cmd, err := cli.CreateCommand(os.Args)
 	if err != nil {
 		fmt.Println(err)
 		cli.printUsage()

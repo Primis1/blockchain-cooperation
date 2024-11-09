@@ -37,56 +37,44 @@ func NewProof(b *Block) *ProfOW {
 	}
 }
 
-func (pow *ProfOW) InitData(nonce int) []byte {
-	data := bytes.Join(
-		[][]byte{
-			// NOTE We take a PreviousHash & Data (its bytes)
-			pow.Block.PrevHash,
-			pow.Block.HashTransactions(),
-			utils.ToHex(int64(nonce)),
-			utils.ToHex(int64(Diff)),
-		},
-		// NOTE required to make cohesive set of bytes
-		[]byte{},
-	)
+func (p *ProfOW) InitData(nonce int) []byte {
+	data := bytes.Join([][]byte{p.Block.Hash, p.Block.PrevHash, utils.ToHex(int64(nonce)), utils.ToHex(Diff)}, []byte{})
 
 	return data
 }
 
 // RUNS a prof of work
-func (pow *ProfOW) Run() (int, []byte) {
-	// NOTE infinite loop which runs until hash is met
-	// NOTE i.e work is done
-	var intHash big.Int
+func (p *ProfOW) Run() (int, []byte) {
+	var InitNumber big.Int
 	var hash [32]byte
 
+	// to indicate difficulty
 	nonce := 0
 
 	for nonce < math.MaxInt64 {
+		// NOTE infinite loop which runs until hash is met
 		// NOTE We prepare data
 		// NOTE Hash it into sha256
 		// NOTE Convert that hash into BigInt
 		// NOTE Compare that int with target
 		// NOTE Which is in pow structure,
-
 		// NOTE so we will work over the same block
+		data := p.InitData(nonce)
+		hash = sha.ComputeHash(data)
 
-		data := pow.InitData(nonce)
-		hash := sha.ComputeHash(data)
+		InitNumber.SetBytes(hash[:])
 
-		log.Printf("\r%x", hash)
-		intHash.SetBytes(hash[:])
+		log.Println(hash)
 
 		// NOTE compare prof of work of target and
 		// NOTE new BigInt version of hash
-		if intHash.Cmp(pow.Target) == -1 {
+		// NOTE exit condition
+		if InitNumber.Cmp(p.Target) == -1 {
 			break
 		} else {
 			nonce++
 		}
 	}
-
-	log.Println()
 
 	return nonce, hash[:]
 }

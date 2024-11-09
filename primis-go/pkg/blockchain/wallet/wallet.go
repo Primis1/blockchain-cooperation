@@ -1,3 +1,7 @@
+// NOTE we create a unique identifier - private key
+// NOTE then public key, which will be used for signatures
+// NOTE then address, but it is not part of wallet object, rather its method 
+
 package wallet
 
 import (
@@ -14,12 +18,12 @@ import (
 // 															wallet
 // NOTE Private key - unique and secure field, which is identifier for user auth
 
-// NOTE Public key - not secret but also unique identifier
+// NOTE Public key - not secret but also unique identifier, which allow to the check the signature 
 // NOTE it created from Private key
 // 															wallet
+// NOTE Address - shortened version of pubkey, made for transferring funds
 
-// --
-// NOTE Address - created from public key
+var info = logging.Info
 
 const (
 	checksumLength = 4
@@ -27,7 +31,6 @@ const (
 
 	version = byte(0x80)
 )
-
 
 type Wallet struct {
 	// NOTE elliptical curve assigning algorithm
@@ -61,7 +64,7 @@ func (w Wallet) Address() []byte {
 	// NOTE		base 58
 	address := utils.Base58Encode(fullHash)
 
-	logging.Info.Info(address)
+	info.Info(address)
 
 	return address
 }

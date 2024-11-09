@@ -7,7 +7,7 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-var err = logging.Err
+var err = logging.Error
 
 func HandleErr(T any) {
 	if T != nil {
