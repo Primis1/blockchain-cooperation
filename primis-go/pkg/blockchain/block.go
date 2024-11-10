@@ -16,21 +16,6 @@ type Block struct {
 	Nonce int
 }
 
-// NOTE struct for our abstract factory and factory object initialization
-type BlockFactory struct{}
-
-// NOTE configuration for our factory
-
-func newBlockFactory() *BlockFactory {
-	return &BlockFactory{}
-}
-
-type BlockConfig struct {
-	Transaction []*Transaction
-	PrevHash    []byte
-	Diff        int
-}
-
 // NOTE we hash each transaction of the block, transaction ID
 func (b *Block) HashTransactions() []byte {
 	var hashes [][]byte
@@ -46,11 +31,11 @@ func (b *Block) HashTransactions() []byte {
 }
 
 // NOTE CreateBlock generates a new block with provided data and previous hash.
-func (f *BlockFactory) CreateBlock(config BlockConfig) *Block {
+func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
 	block := &Block{
 		Hash:         []byte{},
-		Transactions: config.Transaction,
-		PrevHash:     config.PrevHash,
+		Transactions: txs,
+		PrevHash:     prevHash,
 		Nonce:        0,
 	}
 
@@ -63,11 +48,9 @@ func (f *BlockFactory) CreateBlock(config BlockConfig) *Block {
 	return block
 }
 
-func (f *BlockFactory) CreateGenesis(coinbase *Transaction) *Block {
-	return f.CreateBlock(BlockConfig{
-		Transaction: []*Transaction{coinbase},
-		PrevHash:    []byte{},
-	})
+func CreateGenesis(coinbase *Transaction) *Block {
+	return CreateBlock([]*Transaction{coinbase},
+		[]byte{})
 }
 
 func (b *Block) serialize() []byte {

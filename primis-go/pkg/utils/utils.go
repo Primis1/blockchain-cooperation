@@ -4,6 +4,8 @@ import (
 	"blockchain/pkg/logging"
 	"bytes"
 	"encoding/binary"
+	"os"
+
 	"github.com/mr-tron/base58"
 )
 
@@ -41,3 +43,12 @@ func Base58Decode(b []byte) []byte {
 // NOTE fun fact: diff between base57 and base58 is that 58s misses {0, O, I, l, +, /}
 // NOTE I.E base58 has protection from idiots, so user won't mess up with sending tokens 
 // NOTE to "not that address"
+
+
+func DirExist(dir string) bool {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}

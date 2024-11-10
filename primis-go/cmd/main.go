@@ -13,7 +13,6 @@ func init() {
 }
 
 func main() {
-	cli := cli.NewCLI()
-
+    
 	cli.Run()
 }

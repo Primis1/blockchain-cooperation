@@ -1,6 +1,6 @@
 // NOTE we create a unique identifier - private key
 // NOTE then public key, which will be used for signatures
-// NOTE then address, but it is not part of wallet object, rather its method 
+// NOTE then address, but it is not part of wallet object, rather its method
 
 package wallet
 
@@ -18,12 +18,13 @@ import (
 // 															wallet
 // NOTE Private key - unique and secure field, which is identifier for user auth
 
-// NOTE Public key - not secret but also unique identifier, which allow to the check the signature 
+// NOTE Public key - not secret but also unique identifier, which allow to the check the signature
 // NOTE it created from Private key
 // 															wallet
 // NOTE Address - shortened version of pubkey, made for transferring funds
 
 var info = logging.Info
+var errMsg = logging.Error
 
 const (
 	checksumLength = 4
@@ -36,7 +37,7 @@ type Wallet struct {
 	// NOTE elliptical curve assigning algorithm
 
 	PrivateKey ecdsa.PrivateKey
-	PublicKey  []byte
+	publicKey  []byte
 }
 
 // NOTE To create address:
@@ -51,13 +52,13 @@ type Wallet struct {
 
 func (w Wallet) Address() []byte {
 	// NOTE		sha256()
-	pubHash := PublicKey(w.PublicKey)
+	pubHash := publicKey(w.publicKey)
 
 	// NOTE version
 	versionHash := append([]byte{version}, pubHash...)
 
 	// NOTE checksum()
-	checksum := CheckSum(versionHash)
+	checksum := checkSum(versionHash)
 
 	fullHash := append(versionHash, checksum...)
 
@@ -70,7 +71,7 @@ func (w Wallet) Address() []byte {
 }
 
 // NOTE generate key for wallet
-func NewKeyPair() (ecdsa.PrivateKey, []byte) {
+func newKeyPair() (ecdsa.PrivateKey, []byte) {
 	//NOTE outputs will be equal to 256 bytes
 	curve := elliptic.P256()
 
@@ -84,7 +85,7 @@ func NewKeyPair() (ecdsa.PrivateKey, []byte) {
 	return *private, pub
 }
 
-func PublicKey(pubkey []byte) []byte {
+func publicKey(pubkey []byte) []byte {
 	sha1 := sha.ComputeHash(pubkey)
 
 	hasher := ripemd160.New()
@@ -98,7 +99,7 @@ func PublicKey(pubkey []byte) []byte {
 	return publicRipMD
 }
 
-func CheckSum(payload []byte) []byte {
+func checkSum(payload []byte) []byte {
 	sha1 := sha.ComputeHash(payload)
 	sha2 := sha.ComputeHash(sha1[:])
 
@@ -106,8 +107,8 @@ func CheckSum(payload []byte) []byte {
 	return sha2[:checksumLength]
 }
 
-func MakeWallet() *Wallet {
-	private, public := NewKeyPair()
+func makeWallet() *Wallet {
+	private, public := newKeyPair()
 	wallet := Wallet{private, public}
 
 	return &wallet
