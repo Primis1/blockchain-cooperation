@@ -30,7 +30,6 @@ func (b *Block) HashTransactions() []byte {
 	}
 
 	hash = sha.ComputeHash(bytes.Join(hashes, []byte{}))
-
 	return hash[:]
 }
 
@@ -57,25 +56,29 @@ func CreateGenesis(coinbase *Transaction) *Block {
 		[]byte{})
 }
 
+// NOTE Principles of Serializing
+// NOTE 1. create a buffer
+// NOTE 2. create encoder 
+// NOTE 3. encode 
+// NOTE 4. send sequence of bytes  
+
 func (b *Block) serialize() []byte {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
-
 	err := encoder.Encode(b)
-
 	utils.HandleErr(err)
-
 	return res.Bytes()
 }
 
+// NOTE Principles of Deserializer 
+// NOTE 1. declare the structure we want to make 
+// NOTE 2. declare new decoder 
+// NOTE 3. decode the structure 
+// NOTE 4. return new structure 
 func deserialize(data []byte) *Block {
 	var block Block
-
 	decoder := gob.NewDecoder(bytes.NewReader(data))
-
 	err := decoder.Decode(&block)
-
 	utils.HandleErr(err)
-
 	return &block
 }

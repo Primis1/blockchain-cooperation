@@ -1,3 +1,7 @@
+// NOTE the bigger our blockchain become, the more inefficient adding new blocks/transactions become
+// NOTE optimization - iterate only over specific component in the block, such as unspent transactions
+
+
 package blockchain
 
 import (
@@ -13,12 +17,12 @@ import (
 )
 
 type (
-	BlockChain struct {
+	Blockchain struct {
 		LastHash []byte
 		Database *badger.DB
 	}
 
-	BlockChainIterator struct {
+	BlockchainIterator struct {
 		CurrentHash []byte
 		Database    *badger.DB
 	}
@@ -29,7 +33,7 @@ var (
 	genesisData = os.Getenv("genesisData")
 )
 
-func (bc *BlockChain) FindTransaction(ID []byte) (Transaction, error) {
+func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
 	iter := bc.Iterator()
 
 	for {
@@ -52,7 +56,7 @@ func (bc *BlockChain) FindTransaction(ID []byte) (Transaction, error) {
 	return Transaction{}, nil
 }
 
-func (b *BlockChain) SignTransaction(t *Transaction, privateKey ecdsa.PrivateKey) {
+func (b *Blockchain) SignTransaction(t *Transaction, privateKey ecdsa.PrivateKey) {
 	prevTs := make(map[string]Transaction)
 
 	for _, in := range t.Inputs {
@@ -64,7 +68,7 @@ func (b *BlockChain) SignTransaction(t *Transaction, privateKey ecdsa.PrivateKey
 
 	t.Sign(privateKey, prevTs)
 }
-func (b *BlockChain) VerifyTransaction(t *Transaction) bool {
+func (b *Blockchain) VerifyTransaction(t *Transaction) bool {
 	prevTs := make(map[string]Transaction)
 
 	// NOTE collect all transactions into hash-table
@@ -79,7 +83,7 @@ func (b *BlockChain) VerifyTransaction(t *Transaction) bool {
 	return t.Verify(prevTs)
 }
 
-func ContinueBlockChain(address string) *BlockChain {
+func ContinueBlockchain(address string) *Blockchain {
 	if !utils.DirExist(dbPath) {
 		fmt.Println("No existing blockchain found, create one!")
 		runtime.Goexit()
@@ -104,12 +108,12 @@ func ContinueBlockChain(address string) *BlockChain {
 	})
 	utils.HandleErr(err)
 
-	chain := BlockChain{lastHash, db}
+	chain := Blockchain{lastHash, db}
 
 	return &chain
 }
 
-func InitBlockChain(address string) *BlockChain {
+func InitBlockchain(address string) *Blockchain {
 	var lastHash []byte
 
 	if utils.DirExist(dbPath) {
@@ -138,11 +142,11 @@ func InitBlockChain(address string) *BlockChain {
 
 	utils.HandleErr(err)
 
-	blockchain := BlockChain{lastHash, db}
+	blockchain := Blockchain{lastHash, db}
 	return &blockchain
 }
 
-func (r *BlockChain) SaveBlock(block *Block) error {
+func (r *Blockchain) SaveBlock(block *Block) error {
 	return r.Database.Update(func(txn *badger.Txn) error {
 		// NOTE if passed block is empty
 		if block == nil {
@@ -158,7 +162,7 @@ func (r *BlockChain) SaveBlock(block *Block) error {
 	})
 }
 
-func (r *BlockChain) GetBlockByHash(hash []byte) *Block {
+func (r *Blockchain) GetBlockByHash(hash []byte) *Block {
 	var block *Block
 
 	// NOTE reading access to the block
@@ -182,7 +186,7 @@ func (r *BlockChain) GetBlockByHash(hash []byte) *Block {
 	return block
 }
 
-func (r *BlockChain) GetLastHash() ([]byte, error) {
+func (r *Blockchain) GetLastHash() ([]byte, error) {
 	var lhash []byte
 
 	// NOTE the same thing like in GBBH, buy
@@ -198,7 +202,7 @@ func (r *BlockChain) GetLastHash() ([]byte, error) {
 	return lhash, err
 }
 
-func (r *BlockChain) SaveLastHash(hash []byte) error {
+func (r *Blockchain) SaveLastHash(hash []byte) error {
 	return r.Database.Update(func(t *badger.Txn) error {
 		// NOTE badger is key-value DB, so we re-assign the last
 		// NOTE "lh" hash to the argument; all done in bytes - bla bla bla
@@ -209,7 +213,7 @@ func (r *BlockChain) SaveLastHash(hash []byte) error {
 	})
 }
 
-func (r *BlockChain) FindUniqueTransaction(address []byte) ([]Transaction, error) {
+func (r *Blockchain) FindUniqueTransaction(address []byte) ([]Transaction, error) {
 	var unspentT []Transaction
 
 	spentMap := make(map[string][]int)
@@ -262,7 +266,7 @@ func (r *BlockChain) FindUniqueTransaction(address []byte) ([]Transaction, error
 	return unspentT, nil
 }
 
-func (r *BlockChain) FindUnspentTransactionsOutputs(address []byte) []TXO {
+func (r *Blockchain) FindUnspentTransactionsOutputs(address []byte) []TXO {
 	var UTXs []TXO
 
 	// NOTE look up for transaction by hash
@@ -280,36 +284,7 @@ func (r *BlockChain) FindUnspentTransactionsOutputs(address []byte) []TXO {
 	return UTXs
 }
 
-func (r *BlockChain) FindSpendableOutputs(address []byte, amount int) (int, map[string][]int) {
-	accumulated := 0
-	unspnedable := make(map[string][]int)
-
-	unspentT, err := r.FindUniqueTransaction(address)
-	utils.HandleErr(err)
-
-	// label
-Work:
-	for _, t := range unspentT {
-		txID := hex.EncodeToString(t.ID)
-
-		for outIndex, out := range t.Output {
-			// NOTE compare the does amount valid for transfer or not
-			if out.IsLockedWithKey(address) && accumulated < amount {
-				accumulated += out.Value
-				unspnedable[txID] = append(unspnedable[txID], outIndex)
-
-				// NOTE if available amount is smaller, then kick him out!
-				if accumulated >= amount {
-					break Work
-				}
-			}
-		}
-	}
-
-	return accumulated, unspnedable
-}
-
-func (s *BlockChain) AddBlock(transactions []*Transaction) {
+func (s *Blockchain) AddBlock(transactions []*Transaction) {
 	var lastHash []byte
 
 	err := s.Database.View(func(t *badger.Txn) error {
@@ -338,13 +313,13 @@ func (s *BlockChain) AddBlock(transactions []*Transaction) {
 	utils.HandleErr(err)
 }
 
-func (chain *BlockChain) Iterator() *BlockChainIterator {
-	iter := &BlockChainIterator{chain.LastHash, chain.Database}
+func (chain *Blockchain) Iterator() *BlockchainIterator {
+	iter := &BlockchainIterator{chain.LastHash, chain.Database}
 
 	return iter
 }
 
-func (iter *BlockChainIterator) Next() *Block {
+func (iter *BlockchainIterator) Next() *Block {
 	var block *Block
 
 	err := iter.Database.View(func(txn *badger.Txn) error {
@@ -366,7 +341,7 @@ func (iter *BlockChainIterator) Next() *Block {
 	return block
 }
 
-func (chain *BlockChain) FindUnspentTransactions(address []byte) []Transaction {
+func (chain *Blockchain) FindUnspentTransactions(address []byte) []Transaction {
 	var unspentTxs []Transaction
 
 	spentTXOs := make(map[string][]int)

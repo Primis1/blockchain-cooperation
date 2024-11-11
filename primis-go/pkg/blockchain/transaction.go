@@ -84,6 +84,26 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
+func (out TXO) Serialize() []byte {
+	var buffer bytes.Buffer
+
+	enc := gob.NewEncoder(&buffer)
+	err := enc.Encode(out)
+	utils.HandleErr(err)
+
+	return buffer.Bytes()
+}
+
+func Deserialize(data []byte) TXO {
+	var out TXO
+
+	decode := gob.NewDecoder(bytes.NewReader(data))
+	err := decode.Decode(out)
+	utils.HandleErr(err)
+
+	return out
+}
+
 // Yet again we hash transaction
 func (t *Transaction) Hash() []byte {
 	var hash [32]byte
@@ -192,7 +212,7 @@ func (t *Transaction) Verify(prevT map[string]Transaction) bool {
 	return true
 }
 
-func NewTransaction(from, to string, amount int, chain *BlockChain) *Transaction {
+func NewTransaction(from, to string, amount int, chain *Blockchain) *Transaction {
 	var inputs []TXI
 	var outputs []TXO
 
@@ -239,19 +259,6 @@ func (tr *Transaction) IsCoinbase() bool {
 	return len(tr.Inputs) == 1 && len(tr.Inputs[0].ID) == 0 && tr.Inputs[0].Out == -1
 }
 
-// NOTE we create a hash based on the bytes of transaction
-func (t *Transaction) Set() {
-	var encoded bytes.Buffer
-	var hash [32]byte
-
-	encode := gob.NewEncoder(&encoded)
-	err := encode.Encode(t)
-	utils.HandleErr(err)
-	hash = sha.ComputeHash(encoded.Bytes())
-
-	// NOTE pass the values of array
-	t.ID = hash[:]
-}
 
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
