@@ -28,7 +28,7 @@ type ErrorApplication struct {
 
 // NOTE base logger instances
 var infoLog = log.New(os.Stdin, "INFO \t", log.Ltime)
-var errorLog = log.New(os.Stderr, "INFO \t", log.Ltime)
+var errorLog = log.New(os.Stderr, "ERROR \t", log.Ltime)
 
 // NOTE info and error singletons
 func InfoSingleTon() *InfoApplication {
@@ -70,7 +70,7 @@ func getCaller() (string, int) {
 
 	projectRootFolder := os.Getenv("KEY_WORD")
 
-	_, file, line, ok := runtime.Caller(2)
+	_, file, line, ok := runtime.Caller(3)
 	if !ok {
 		log.Fatalln("caller can not be defined")
 	}

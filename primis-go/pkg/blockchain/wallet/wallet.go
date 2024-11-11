@@ -8,6 +8,7 @@ import (
 	"blockchain/pkg/logging"
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -37,7 +38,7 @@ type Wallet struct {
 	// NOTE elliptical curve assigning algorithm
 
 	PrivateKey ecdsa.PrivateKey
-	publicKey  []byte
+	PublicKey  []byte
 }
 
 // NOTE To create address:
@@ -52,7 +53,7 @@ type Wallet struct {
 
 func (w Wallet) Address() []byte {
 	// NOTE		sha256()
-	pubHash := publicKey(w.publicKey)
+	pubHash := PublicKey(w.PublicKey)
 
 	// NOTE version
 	versionHash := append([]byte{version}, pubHash...)
@@ -85,7 +86,7 @@ func newKeyPair() (ecdsa.PrivateKey, []byte) {
 	return *private, pub
 }
 
-func publicKey(pubkey []byte) []byte {
+func PublicKey(pubkey []byte) []byte {
 	sha1 := sha.ComputeHash(pubkey)
 
 	hasher := ripemd160.New()
@@ -105,6 +106,16 @@ func checkSum(payload []byte) []byte {
 
 	// return first 4 bytes
 	return sha2[:checksumLength]
+}
+
+func ValidateAddress(address string) bool {
+	pubKeyHash := utils.Base58Decode([]byte(address))
+	actualChecksum := pubKeyHash[len(pubKeyHash)-checksumLength:]
+	version := pubKeyHash[0]
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-checksumLength]
+	targetChecksum := checkSum(append([]byte{version}, pubKeyHash...))
+
+	return bytes.Equal(actualChecksum, targetChecksum)
 }
 
 func makeWallet() *Wallet {

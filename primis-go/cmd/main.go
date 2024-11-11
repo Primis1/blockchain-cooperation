@@ -3,6 +3,7 @@ package main
 import (
 	"blockchain/internal/cli"
 	"blockchain/internal/config"
+	"runtime"
 )
 
 // var chain = blockchain.Facade
@@ -13,6 +14,7 @@ func init() {
 }
 
 func main() {
-    
+	defer runtime.Goexit()
+	cli := cli.CommandLine{}
 	cli.Run()
 }

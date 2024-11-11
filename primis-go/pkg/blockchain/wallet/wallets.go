@@ -1,3 +1,6 @@
+// BUG type elliptic.p256Curve has no exported fields
+// NOTE For data to encoded and decoded, field should be `exportable`.
+// NOTE `gob` package can not access the field which are from lower case
 package wallet
 
 import (
@@ -5,6 +8,7 @@ import (
 	"bytes"
 	"crypto/elliptic"
 	"encoding/gob"
+	"encoding/json"
 	"os"
 )
 
@@ -12,9 +16,9 @@ type Wallets struct {
 	Wallets map[string]*Wallet
 }
 
+// TODO remove boiler-plate 
 var (
-	walletPath = os.Getenv("wallets")
-	dbPath     = os.Getenv("dbPath")
+	walletPath = "../tmp/wallet.data"
 )
 
 func CreateWallets() (*Wallets, error) {
@@ -39,6 +43,10 @@ func (w *Wallets) AddWallet() string {
 	return address
 }
 
+func (w *Wallets) GetWallet(address string) *Wallet {
+	return w.Wallets[address]
+}
+
 func (w Wallets) GetAllAddresses() []string {
 	var arr = make([]string, 0, len(w.Wallets))
 
@@ -50,8 +58,10 @@ func (w Wallets) GetAllAddresses() []string {
 }
 
 func (w *Wallets) loadFile() error {
-	if !utils.DirExist(dbPath) {
-		errMsg.Error("wallet folder does not exist")
+	if !utils.DirExist(walletPath) {
+		file, _ := os.Open(walletPath)
+
+		defer file.Close()
 	}
 
 	var wallets Wallets
@@ -64,7 +74,9 @@ func (w *Wallets) loadFile() error {
 	decoder := gob.NewDecoder(bytes.NewReader(fileContent))
 
 	err = decoder.Decode(&wallets)
-	utils.HandleErr(err)
+	if err != nil {
+		return err
+	}
 
 	w.Wallets = wallets.Wallets
 
@@ -72,16 +84,9 @@ func (w *Wallets) loadFile() error {
 }
 
 func (w *Wallets) SaveFile() {
-	var content bytes.Buffer
-
-	gob.Register(elliptic.P256())
-	encoder := gob.NewEncoder(&content)
-
-	// We just send the the values of bytes into encoded buffer
-	err := encoder.Encode(w)
+	jsonData, err := json.Marshal(w)
 	utils.HandleErr(err)
 
-	// pass these bytes into a file
-	err = os.WriteFile(walletPath, content.Bytes(), 0644)
+	err = os.WriteFile(walletPath, jsonData, 0544)
 	utils.HandleErr(err)
 }

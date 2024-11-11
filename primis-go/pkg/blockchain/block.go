@@ -1,11 +1,15 @@
 package blockchain
 
 import (
+	"blockchain/pkg/logging"
 	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
 	"encoding/gob"
 )
+
+var info = logging.Info
+var errMsg = logging.Error
 
 // NOTE each block contains huge number of transaction, to be created
 type Block struct {
