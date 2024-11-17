@@ -6,7 +6,6 @@ import (
 	"blockchain/pkg/utils"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"runtime"
 	"strconv"
@@ -22,6 +21,7 @@ func (cli *CommandLine) printUsage() {
 	fmt.Println(" send -from FROM -to TO -amount AMOUNT - Send amount of coins")
 	fmt.Println(" createwallet - Creates a new Wallet")
 	fmt.Println(" listaddresses - Lists the addresses in our wallet file")
+	fmt.Println(" reindex - change the indexes of transactions")
 }
 
 func (cli *CommandLine) validateArgs() {
@@ -49,7 +49,7 @@ func (cli *CommandLine) createWallet() {
 }
 
 func (cli *CommandLine) printChain() {
-	chain := blockchain.ContinueBlockChain("")
+	chain := blockchain.ContinueBlockchain("")
 	defer chain.Database.Close()
 	iter := chain.Iterator()
 
@@ -75,10 +75,14 @@ func (cli *CommandLine) createBlockChain(address string) {
 	if !wallet.ValidateAddress(address) {
 		utils.HandleErr("Address is not valid")
 	}
-
-	chain := blockchain.InitBlockChain(address)
+	chain := blockchain.InitBlockchain(address)
 	chain.Database.Close()
+
+	UTXOSet := blockchain.UnspentTransactionSET{Blockchain: chain}
+	UTXOSet.Reindex()
+
 	fmt.Println("Finished!")
+
 }
 
 func (cli *CommandLine) getBalance(address string) {
@@ -86,13 +90,14 @@ func (cli *CommandLine) getBalance(address string) {
 		utils.HandleErr("Address is not valid")
 	}
 
-	chain := blockchain.ContinueBlockChain(address)
+	chain := blockchain.ContinueBlockchain(address)
+	UTXOSet := blockchain.UnspentTransactionSET{Blockchain: chain}
 	defer chain.Database.Close()
 
 	balance := 0
 	pubKeyHash := utils.Base58Decode([]byte(address))
 	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
-	UTXOs := chain.FindUnspentTransactionsOutputs(pubKeyHash)
+	UTXOs := UTXOSet.FindUnspentTransactions(pubKeyHash)
 
 	for _, out := range UTXOs {
 		balance += out.Value
@@ -109,12 +114,27 @@ func (cli *CommandLine) send(from, to string, amount int) {
 		utils.HandleErr("Address is not valid")
 	}
 
-	chain := blockchain.ContinueBlockChain(from)
+	chain := blockchain.ContinueBlockchain(from)
+	// pass the reference to the blockchain
+	UTXOSet := blockchain.UnspentTransactionSET{Blockchain: chain}
 	defer chain.Database.Close()
 
-	tx := blockchain.NewTransaction(from, to, amount, chain)
-	chain.AddBlock([]*blockchain.Transaction{tx})
+	// create a transaction from followed arguments
+	tx := blockchain.NewTransaction(from, to, amount, &UTXOSet)
+	cbtx := blockchain.CoinbaseTx(from, "")
+	block := chain.AddBlock([]*blockchain.Transaction{cbtx, tx})
+	UTXOSet.Update(block)
 	fmt.Println("Success!")
+}
+
+func (cli *CommandLine) reindexUTXO() {
+	chain := blockchain.ContinueBlockchain("")
+	defer chain.Database.Close()
+	UTXOSet := blockchain.UnspentTransactionSET{Blockchain: chain}
+	UTXOSet.Reindex()
+
+	count := UTXOSet.CountUnspentOuts()
+	fmt.Printf("Done! There are %d transactions in the UTXO set.\n", count)
 }
 
 func (cli *CommandLine) Run() {
@@ -126,7 +146,9 @@ func (cli *CommandLine) Run() {
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 	createWalletCmd := flag.NewFlagSet("createwallet", flag.ExitOnError)
 	listAddressesCmd := flag.NewFlagSet("listaddresses", flag.ExitOnError)
+	reindexCmd := flag.NewFlagSet("reindex", flag.ExitOnError)
 
+	// further options
 	getBalanceAddress := getBalanceCmd.String("address", "", "The address to get balance for")
 	createBlockchainAddress := createBlockchainCmd.String("address", "", "The address to send genesis block reward to")
 	sendFrom := sendCmd.String("from", "", "Source wallet address")
@@ -136,34 +158,25 @@ func (cli *CommandLine) Run() {
 	switch os.Args[1] {
 	case "getbalance":
 		err := getBalanceCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Panic(err)
-		}
+		utils.HandleErr(err)
 	case "createblockchain":
 		err := createBlockchainCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Panic(err)
-		}
+		utils.HandleErr(err)
+	case "reindex":
+		err := reindexCmd.Parse(os.Args[2:])
+		utils.HandleErr(err)
 	case "listaddresses":
 		err := listAddressesCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Panic(err)
-		}
+		utils.HandleErr(err)
 	case "createwallet":
 		err := createWalletCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Panic(err)
-		}
+		utils.HandleErr(err)
 	case "printchain":
 		err := printChainCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Panic(err)
-		}
+		utils.HandleErr(err)
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Panic(err)
-		}
+		utils.HandleErr(err)
 	default:
 		cli.printUsage()
 		runtime.Goexit()
@@ -192,8 +205,13 @@ func (cli *CommandLine) Run() {
 	if createWalletCmd.Parsed() {
 		cli.createWallet()
 	}
+
 	if listAddressesCmd.Parsed() {
 		cli.listAddresses()
+	}
+
+	if reindexCmd.Parsed() {
+		cli.reindexUTXO()
 	}
 
 	if sendCmd.Parsed() {

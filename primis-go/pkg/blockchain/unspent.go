@@ -38,7 +38,7 @@ func (u *UnspentTransactionSET) Reindex() {
 			key = append(utxoPrefix, key...)
 
 			// PUSH it into database
-			err = txn.Set(key, outs.Serialize())
+			err = txn.Set(key, outs.SerializeOuts())
 			utils.HandleErr(err)
 		}
 
@@ -70,7 +70,7 @@ func (u *UnspentTransactionSET) Update(block *Block) {
 
 					utils.HandleErr(err)
 					// deserialize bytes into TXOs
-					outs := Deserialize(v)
+					outs := DeserializeOuts(v)
 
 					// TODO take all the outputs which are not attached to the input we are iterating through
 					for outIdx, out := range outs.Outs {
@@ -88,7 +88,7 @@ func (u *UnspentTransactionSET) Update(block *Block) {
 						}
 					} else {
 						// NOTE convert transactions into bytes
-						if err := txn.Set(inID, updateOutputs.Serialize()); err != nil {
+						if err := txn.Set(inID, updateOutputs.SerializeOuts()); err != nil {
 							errMsg.Error(err)
 						}
 					}
@@ -100,7 +100,7 @@ func (u *UnspentTransactionSET) Update(block *Block) {
 
 			txID := append(utxoPrefix, tx.ID...)
 
-			if err := txn.Set(txID, newOutputs.Serialize()); err != nil {
+			if err := txn.Set(txID, newOutputs.SerializeOuts()); err != nil {
 				errMsg.Error(err)
 			}
 		}
@@ -132,7 +132,7 @@ func (u UnspentTransactionSET) FindUnspentTransactions(pubHash []byte) []TXO {
 			})
 			utils.HandleErr(err)
 
-			outs := Deserialize(v)
+			outs := DeserializeOuts(v)
 
 			for _, out := range outs.Outs {
 				if out.IsLockedWithKey(pubHash) {
@@ -262,7 +262,7 @@ func (u UnspentTransactionSET) FindSpendableOutputs(pubKeyHash []byte, amount in
 			utils.HandleErr(err)
 			k = bytes.TrimPrefix(k, utxoPrefix)
 			txID := hex.EncodeToString(k)
-			outs := Deserialize(v)
+			outs := DeserializeOuts(v)
 
 			for outIdx, out := range outs.Outs {
 				if out.IsLockedWithKey(pubKeyHash) && accumulated < amount {

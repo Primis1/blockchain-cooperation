@@ -91,7 +91,7 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
-func (out TXOs) Serialize() []byte {
+func (out TXOs) SerializeOuts() []byte {
 	var buffer bytes.Buffer
 
 	enc := gob.NewEncoder(&buffer)
@@ -101,11 +101,11 @@ func (out TXOs) Serialize() []byte {
 	return buffer.Bytes()
 }
 
-func Deserialize(data []byte) TXOs {
+func DeserializeOuts(data []byte) TXOs {
 	var out TXOs
 
 	decode := gob.NewDecoder(bytes.NewReader(data))
-	err := decode.Decode(out)
+	err := decode.Decode(&out)
 	utils.HandleErr(err)
 
 	return out
@@ -266,11 +266,15 @@ func (tr *Transaction) IsCoinbase() bool {
 
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		ranData := make([]byte, 24)
+		_, err := rand.Read(ranData)
+		utils.HandleErr(err)
+		data = fmt.Sprintf("%x", ranData)
+
 	}
 
 	txin := TXI{[]byte{}, -1, nil, []byte(data)}
-	txout := NewTXO(100, to)
+	txout := NewTXO(20, to)
 
 	tx := Transaction{nil, []TXI{txin}, []TXO{*txout}}
 	tx.Hash()

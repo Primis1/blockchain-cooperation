@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"blockchain/pkg/logging"
-	"blockchain/pkg/sha"
 	"blockchain/pkg/utils"
 	"bytes"
 	"encoding/gob"
@@ -23,14 +22,16 @@ type Block struct {
 // NOTE we hash each transaction of the block, transaction ID
 func (b *Block) HashTransactions() []byte {
 	var hashes [][]byte
-	var hash [32]byte
 
 	for _, tx := range b.Transactions {
-		hashes = append(hashes, tx.ID)
+		hashes = append(hashes, tx.Serialize())
 	}
+	// Convert serialized transactions within the block 
+	// and convert them into tree
+	tree := NewMerkleTree(hashes)
 
-	hash = sha.ComputeHash(bytes.Join(hashes, []byte{}))
-	return hash[:]	
+	// Create a merkle tree
+	return tree.RootNode.Data
 }
 
 // NOTE CreateBlock generates a new block with provided data and previous hash.
@@ -75,7 +76,7 @@ func (b *Block) serialize() []byte {
 // NOTE 2. declare new decoder 
 // NOTE 3. decode the structure 
 // NOTE 4. return new structure 
-func deserialize(data []byte) *Block {
+func deserializeBlock(data []byte) *Block {
 	var block Block
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	err := decoder.Decode(&block)

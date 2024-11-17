@@ -68,6 +68,10 @@ func (b *Blockchain) SignTransaction(t *Transaction, privateKey ecdsa.PrivateKey
 	t.Sign(privateKey, prevTs)
 }
 func (b *Blockchain) VerifyTransaction(t *Transaction) bool {
+	if t.IsCoinbase() {
+		return true
+	}
+
 	prevTs := make(map[string]Transaction)
 
 	// NOTE collect all transactions into hash-table
@@ -118,8 +122,8 @@ func InitBlockchain(address string) *Blockchain {
 	if utils.DirExist(dbPath) {
 		info.Info("Blockchain already exists")
 		runtime.Goexit()
-	}
-
+	} 
+info.Info(dbPath)
 	opts := badger.DefaultOptions(dbPath)
 
 	db, err := badger.Open(opts)
@@ -177,7 +181,7 @@ func (r *Blockchain) GetBlockByHash(hash []byte) *Block {
 		blockData, err := item.ValueCopy(nil)
 		utils.HandleErr(err)
 
-		block = deserialize(blockData)
+		block = deserializeBlock(blockData)
 		return nil
 	})
 
@@ -265,7 +269,7 @@ func (r *Blockchain) FindUniqueTransaction(address []byte) ([]Transaction, error
 	return unspentT, nil
 }
 
-func (s *Blockchain) AddBlock(transactions []*Transaction) {
+func (s *Blockchain) AddBlock(transactions []*Transaction) *Block {
 	var lastHash []byte
 
 	err := s.Database.View(func(t *badger.Txn) error {
@@ -292,6 +296,7 @@ func (s *Blockchain) AddBlock(transactions []*Transaction) {
 	})
 
 	utils.HandleErr(err)
+	return newBlock
 }
 
 func (chain *Blockchain) Iterator() *BlockchainIterator {
@@ -311,7 +316,7 @@ func (iter *BlockchainIterator) Next() *Block {
 			encodedBlock = val
 			return nil
 		})
-		block = deserialize(encodedBlock)
+		block = deserializeBlock(encodedBlock)
 
 		return err
 	})
