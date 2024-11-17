@@ -17,6 +17,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+
+	// "crypto/elliptic"
+	// "math/big"
 	"strings"
 )
 
@@ -24,6 +27,10 @@ type Transaction struct {
 	ID     []byte
 	Inputs []TXI
 	Output []TXO
+}
+
+type TXOs struct {
+	Outs []TXO
 }
 
 type TXI struct {
@@ -84,7 +91,7 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
-func (out TXO) Serialize() []byte {
+func (out TXOs) Serialize() []byte {
 	var buffer bytes.Buffer
 
 	enc := gob.NewEncoder(&buffer)
@@ -94,8 +101,8 @@ func (out TXO) Serialize() []byte {
 	return buffer.Bytes()
 }
 
-func Deserialize(data []byte) TXO {
-	var out TXO
+func Deserialize(data []byte) TXOs {
+	var out TXOs
 
 	decode := gob.NewDecoder(bytes.NewReader(data))
 	err := decode.Decode(out)
@@ -203,7 +210,10 @@ func (t *Transaction) Verify(prevT map[string]Transaction) bool {
 		x.SetBytes(in.PubKey[:(keyLen / 2)])
 		y.SetBytes(in.PubKey[(keyLen / 2):])
 
-		rawPubKey := ecdsa.PublicKey{curve, &x, &y}
+		rawPubKey := ecdsa.PublicKey{
+			Curve: curve,
+			X:     &x,
+			Y:     &y}
 		if !ecdsa.Verify(&rawPubKey, txCopy.ID, &r, &s) {
 			return false
 		}
@@ -212,24 +222,21 @@ func (t *Transaction) Verify(prevT map[string]Transaction) bool {
 	return true
 }
 
-func NewTransaction(from, to string, amount int, chain *Blockchain) *Transaction {
+func NewTransaction(from, to string, amount int, UTXO *UnspentTransactionSET) *Transaction {
 	var inputs []TXI
 	var outputs []TXO
 
 	wallets, err := wallet.CreateWallets()
 	utils.HandleErr(err)
-
 	w := wallets.GetWallet(from)
-
-	pubKey := wallet.PublicKey(w.PublicKey)
-
-	acc, validity := chain.FindSpendableOutputs(pubKey, amount)
+	pubKeyHash := wallet.PublicKey(w.PublicKey)
+	acc, validOutputs := UTXO.FindSpendableOutputs(pubKeyHash, amount)
 
 	if acc < amount {
-		utils.HandleErr("Error: not enough funds")
+		info.Info("Error: not enough funds")
 	}
 
-	for txid, outs := range validity {
+	for txid, outs := range validOutputs {
 		txID, err := hex.DecodeString(txid)
 		utils.HandleErr(err)
 
@@ -247,9 +254,7 @@ func NewTransaction(from, to string, amount int, chain *Blockchain) *Transaction
 
 	tx := Transaction{nil, inputs, outputs}
 	tx.ID = tx.Hash()
-
-	// NOTE sign transaction with our Prv Key
-	chain.SignTransaction(&tx, w.PrivateKey)
+	UTXO.Blockchain.SignTransaction(&tx, w.PrivateKey)
 
 	return &tx
 }
@@ -258,7 +263,6 @@ func (tr *Transaction) IsCoinbase() bool {
 	// NOTE if the transaction exist but is empty?
 	return len(tr.Inputs) == 1 && len(tr.Inputs[0].ID) == 0 && tr.Inputs[0].Out == -1
 }
-
 
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
@@ -269,7 +273,7 @@ func CoinbaseTx(to, data string) *Transaction {
 	txout := NewTXO(100, to)
 
 	tx := Transaction{nil, []TXI{txin}, []TXO{*txout}}
-	tx.Set()
+	tx.Hash()
 
 	return &tx
 }

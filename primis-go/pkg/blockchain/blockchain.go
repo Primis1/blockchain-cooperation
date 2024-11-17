@@ -1,7 +1,6 @@
 // NOTE the bigger our blockchain become, the more inefficient adding new blocks/transactions become
 // NOTE optimization - iterate only over specific component in the block, such as unspent transactions
 
-
 package blockchain
 
 import (
@@ -266,24 +265,6 @@ func (r *Blockchain) FindUniqueTransaction(address []byte) ([]Transaction, error
 	return unspentT, nil
 }
 
-func (r *Blockchain) FindUnspentTransactionsOutputs(address []byte) []TXO {
-	var UTXs []TXO
-
-	// NOTE look up for transaction by hash
-	unspentTransactions := r.FindUnspentTransactions(address)
-
-	for _, t := range unspentTransactions {
-		for _, out := range t.Output {
-
-			if out.IsLockedWithKey(address) {
-				UTXs = append(UTXs, out)
-			}
-		}
-	}
-
-	return UTXs
-}
-
 func (s *Blockchain) AddBlock(transactions []*Transaction) {
 	var lastHash []byte
 
@@ -341,8 +322,11 @@ func (iter *BlockchainIterator) Next() *Block {
 	return block
 }
 
-func (chain *Blockchain) FindUnspentTransactions(address []byte) []Transaction {
-	var unspentTxs []Transaction
+// TODO we should make a method which will iterate over blockchain transactions
+// TODO and find all unspent outputs from these transactions
+
+func (chain *Blockchain) FindUnspentTransactionsOutputs() map[string]TXOs {
+	var UTXO = make(map[string]TXOs)
 
 	spentTXOs := make(map[string][]int)
 
@@ -363,16 +347,19 @@ func (chain *Blockchain) FindUnspentTransactions(address []byte) []Transaction {
 						}
 					}
 				}
-				if out.IsLockedWithKey(address) {
-					unspentTxs = append(unspentTxs, *tx)
-				}
+
+				// NOTE we put collected outs'
+				outs := UTXO[txID]
+				outs.Outs = append(outs.Outs, out)
+				UTXO[txID] = outs // NOTE put it back into map
+
 			}
 			if !tx.IsCoinbase() {
 				for _, in := range tx.Inputs {
-					if in.UserKey(address) {
-						inTxID := hex.EncodeToString(in.ID)
-						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
-					}
+					// NOTE translate into string
+					inTxID := hex.EncodeToString(in.ID)
+					spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Out)
+
 				}
 			}
 		}
@@ -381,5 +368,5 @@ func (chain *Blockchain) FindUnspentTransactions(address []byte) []Transaction {
 			break
 		}
 	}
-	return unspentTxs
+	return UTXO
 }

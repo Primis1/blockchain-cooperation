@@ -30,7 +30,7 @@ func (b *Block) HashTransactions() []byte {
 	}
 
 	hash = sha.ComputeHash(bytes.Join(hashes, []byte{}))
-	return hash[:]
+	return hash[:]	
 }
 
 // NOTE CreateBlock generates a new block with provided data and previous hash.
