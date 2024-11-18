@@ -186,7 +186,7 @@ func SendTx(addr string, tnx *blockchain.Transaction) {
 }
 
 func SendVersion(addr string, chain *blockchain.Blockchain) {
-	bestHeight := chain.GetBestHeight()
+	bestHeight, _ := chain.GetBestHeightAndLastHash()
 	payload := GobEncode(Version{version, bestHeight, nodeAddress})
 
 	request := append(CmdToBytes("version"), payload...)
@@ -221,7 +221,7 @@ func HandleBlock(request []byte, chain *blockchain.Blockchain) {
 	block := blockchain.DeserializeBlock(blockData)
 
 	fmt.Println("Recevied a new block!")
-	chain.AddBlock(block.Transactions)
+	chain.AddBlock(block)
 
 	fmt.Printf("Added block %x\n", block.Hash)
 
@@ -255,7 +255,7 @@ func HandleInv(request []byte, chain *blockchain.Blockchain) {
 
 		newInTransit := [][]byte{}
 		for _, b := range blocksInTransit {
-			if bytes.Compare(b, blockHash) != 0 {
+			if !bytes.Equal(b, blockHash)  {
 				newInTransit = append(newInTransit, b)
 			}
 		}
@@ -280,7 +280,7 @@ func HandleGetBlocks(request []byte, chain *blockchain.Blockchain) {
 	err := dec.Decode(&payload)
 	utils.HandleErr(err)
 
-	blocks := chain.GetBlockHashes()
+	blocks := chain.GetAllHashes()
 	SendInv(payload.AddrFrom, "block", blocks)
 }
 
@@ -311,8 +311,11 @@ func HandleGetData(request []byte, chain *blockchain.Blockchain) {
 }
 
 func HandleTx(request []byte, chain *blockchain.Blockchain) {
-	var buff bytes.Buffer
-	var payload Tx
+	var (
+		buff    bytes.Buffer
+		payload Tx
+		tx      blockchain.Transaction
+	)
 
 	buff.Write(request[commandLength:])
 	dec := gob.NewDecoder(&buff)
@@ -320,7 +323,8 @@ func HandleTx(request []byte, chain *blockchain.Blockchain) {
 	utils.HandleErr(err)
 
 	txData := payload.Transaction
-	tx := blockchain.DeserializeTransaction(txData)
+
+	blockchain.DeserializeTransactions(txData, tx)
 	memoryPool[hex.EncodeToString(tx.ID)] = tx
 
 	fmt.Printf("%s, %d", nodeAddress, len(memoryPool))
@@ -388,7 +392,7 @@ func HandleVersion(request []byte, chain *blockchain.Blockchain) {
 	err := dec.Decode(&payload)
 	utils.HandleErr(err)
 
-	bestHeight := chain.GetBestHeight()
+	bestHeight, _ := chain.GetBestHeightAndLastHash()
 	otherHeight := payload.BestHeight
 
 	if bestHeight < otherHeight {
@@ -433,7 +437,6 @@ func HandleConnection(conn net.Conn, chain *blockchain.Blockchain) {
 
 func StartServer(nodeID, minerAddress string) {
 	nodeAddress = fmt.Sprintf("localhost:%s", nodeID)
-	minerAddress = minerAddress
 	ln, err := net.Listen(protocol, nodeAddress)
 	utils.HandleErr(err)
 	defer ln.Close()

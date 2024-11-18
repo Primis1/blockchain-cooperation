@@ -101,6 +101,15 @@ func (out TXOs) SerializeOuts() []byte {
 	return buffer.Bytes()
 }
 
+func DeserializeTransactions(data []byte, tx interface{})  {
+	var txn = &tx
+
+	decode := gob.NewDecoder(bytes.NewReader(data))
+	err := decode.Decode(txn)
+
+	utils.HandleErr(err)
+}
+
 func DeserializeOuts(data []byte) TXOs {
 	var out TXOs
 
