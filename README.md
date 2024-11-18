@@ -1,7 +1,25 @@
-# blockchain-cooperation
-GO and C++ implementation of blockchain technology
+# My-own-blockchain
 
-## blockchain package
+*If you want to read only purpose of functions, pls skip this boring introduction*
+
+In brief. My idea was to finally answer "What the hell is even this blockchain is?". 
+
+`Don't understand something. Build it.`
+
+So, my goofy plan was: 
+
+    1. Read A LOT OF DOCS 
+    2. Write simple, but functionally complete blockchain in golang 
+    3. Look for exaplme in Geth(go etherium); ask a team-lead; read repo again 
+    4. Re-write it all with patterns
+    5. Write tests
+    6. Write fixes after tests
+    7. Be happy with my work (never happen)
+
+My next step is to make a blog page with Next.Js with complete overview for the entire project, but for now let it stay in the way it is
+
+***
+
 ### `blockchain.go`
 - `InitBlockchain(address, nodeId)`: Create initial blockchain with genesis block
 - `ContinueBlockchain(nodeId)`: Restore existing blockchain
@@ -58,7 +76,7 @@ GO and C++ implementation of blockchain technology
 ### `SaveFile(nodeId string)`  
     Saves the current `Wallets` collection to a file associated with the given `nodeId`.
 
----
+***
 
 ## wallets.go
 
@@ -80,5 +98,11 @@ GO and C++ implementation of blockchain technology
 ### `makeWallet() *Wallet`  
     Creates a new `Wallet` by generating a private/public key pair and initializing a `Wallet` instance with these keys.
 
+***
+
 # Resources used in development 
-*Beyond good website that i wish i found earlier: https://learnmeabitcoin.com/*
+*Beyond good website that i wish i found earlier:*
+
+https://learnmeabitcoin.com/
+
+https://github.com/ethereum/go-ethereum
