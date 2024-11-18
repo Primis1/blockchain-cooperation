@@ -223,13 +223,10 @@ func (t *Transaction) Verify(prevT map[string]Transaction) bool {
 	return true
 }
 
-func NewTransaction(from, to string, amount int, UTXO *UnspentTransactionSET) *Transaction {
+func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UnspentTransactionSET) *Transaction {
 	var inputs []TXI
 	var outputs []TXO
 
-	wallets, err := wallet.CreateWallets()
-	utils.HandleErr(err)
-	w := wallets.GetWallet(from)
 	pubKeyHash := wallet.PublicKey(w.PublicKey)
 	acc, validOutputs := UTXO.FindSpendableOutputs(pubKeyHash, amount)
 
@@ -246,6 +243,7 @@ func NewTransaction(from, to string, amount int, UTXO *UnspentTransactionSET) *T
 			inputs = append(inputs, input)
 		}
 	}
+	from := fmt.Sprintf("%s", w.Address())
 
 	outputs = append(outputs, *NewTXO(amount, to))
 

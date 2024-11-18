@@ -294,7 +294,7 @@ func HandleGetData(request []byte, chain *blockchain.Blockchain) {
 	utils.HandleErr(err)
 
 	if payload.Type == "block" {
-		block, err := chain.GetBlock([]byte(payload.ID))
+		block := chain.GetBlock([]byte(payload.ID))
 		if err != nil {
 			return
 		}

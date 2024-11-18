@@ -9,6 +9,7 @@ import (
 	"crypto/elliptic"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -16,16 +17,16 @@ type Wallets struct {
 	Wallets map[string]*Wallet
 }
 
-// TODO remove boiler-plate 
+// TODO remove boiler-plate
 var (
-	walletPath = "../tmp/wallet.data"
+	walletPath = "../tmp/wallet_%s.data"
 )
 
-func CreateWallets() (*Wallets, error) {
+func CreateWallets(nodeId string) (*Wallets, error) {
 	wallets := Wallets{}
 	wallets.Wallets = make(map[string]*Wallet)
 
-	err := wallets.loadFile()
+	err := wallets.loadFile(nodeId)
 
 	return &wallets, err
 }
@@ -57,11 +58,10 @@ func (w Wallets) GetAllAddresses() []string {
 	return arr
 }
 
-func (w *Wallets) loadFile() error {
-	if !utils.DirExist(walletPath) {
-		file, _ := os.Open(walletPath)
-
-		defer file.Close()
+func (w *Wallets) loadFile(nodeId string) error {
+	walletPath := fmt.Sprintf(walletPath, nodeId)
+	if _, err := os.Stat(walletPath); os.IsNotExist(err) {
+		return err
 	}
 
 	var wallets Wallets
@@ -83,7 +83,9 @@ func (w *Wallets) loadFile() error {
 	return nil
 }
 
-func (w *Wallets) SaveFile() {
+func (w *Wallets) SaveFile(nodeId string) {
+	walletPath := fmt.Sprintf(walletPath, nodeId)
+
 	jsonData, err := json.Marshal(w)
 	utils.HandleErr(err)
 

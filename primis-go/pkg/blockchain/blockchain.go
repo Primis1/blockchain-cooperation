@@ -120,7 +120,8 @@ func ContinueBlockchain(nodeId string) *Blockchain {
 	return &chain
 }
 
-func InitBlockchain(address string) *Blockchain {
+func InitBlockchain(address, nodeId string) *Blockchain {
+	path := fmt.Sprintf(dbPath, nodeId)
 	var lastHash []byte
 
 	if DirExist(dbPath) {
@@ -128,9 +129,9 @@ func InitBlockchain(address string) *Blockchain {
 		runtime.Goexit()
 	}
 
-	opts := badger.DefaultOptions(dbPath)
+	opts := badger.DefaultOptions(path)
 
-	db, err := badger.Open(opts)
+	db, err := openDB(path, opts)
 	utils.HandleErr(err)
 
 	err = db.Update(func(txn *badger.Txn) error {
@@ -303,7 +304,7 @@ func (chain *Blockchain) GetBestHeightAndLastHash() (int, []byte) {
 
 		utils.HandleErr(err)
 
-		err = item.Value(func(val []byte) error {
+		item.Value(func(val []byte) error {
 			lastHash = val
 			return nil
 		})
@@ -313,7 +314,7 @@ func (chain *Blockchain) GetBestHeightAndLastHash() (int, []byte) {
 
 		var lastBlockData []byte
 
-		err = item.Value(func(val []byte) error {
+		item.Value(func(val []byte) error {
 			lastBlockData = val
 			return nil
 		})
@@ -367,7 +368,7 @@ func (chain *Blockchain) MineBlock(transaction []*Transaction) *Block {
 	lastHeight, lastHash = height, hash
 
 	newBlock := CreateBlock(transaction, lastHash, lastHeight+1)
-	
+
 	err := chain.Database.Update(func(txn *badger.Txn) error {
 		err := txn.Set(newBlock.Hash, newBlock.Serialize())
 		utils.HandleErr(err)
