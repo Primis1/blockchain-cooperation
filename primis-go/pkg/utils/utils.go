@@ -4,7 +4,7 @@ import (
 	"blockchain/pkg/logging"
 	"bytes"
 	"encoding/binary"
-	"os"
+	"encoding/gob"
 
 	"github.com/mr-tron/base58"
 )
@@ -42,10 +42,12 @@ func Base58Decode(b []byte) []byte {
 // NOTE I.E base58 has protection from idiots, so user won't mess up with sending tokens
 // NOTE to "not that address"
 
-func DirExist(dir string) bool {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return false
-	}
+func GobEncoder(data interface{}) []byte {
+	var buff bytes.Buffer
 
-	return true
+	enc := gob.NewEncoder(&buff)
+
+	err := enc.Encode(data)
+	HandleErr(err)
+	return buff.Bytes()
 }

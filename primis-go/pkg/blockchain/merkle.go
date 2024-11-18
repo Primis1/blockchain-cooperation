@@ -3,7 +3,7 @@
 // NOTE for that data. It kinda goes from bottom to top.
 // NOTE We can access all hashes of leafs, if we have root node
 
-// NOTE SPV - simplified payment verification system
+// NOTE "SPV" - simplified payment verification system
 // NOTE because each block must contain copies of all other block
 // NOTE we have "lite" bitcoin node, which instead downloading entire blockchain,
 // NOTE lite node contains reference to single "full" block,

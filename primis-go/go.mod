@@ -4,6 +4,8 @@ go 1.23.2
 
 require github.com/dgraph-io/badger v1.6.2
 
+require github.com/vrecan/death v3.0.1+incompatible // indirect
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
