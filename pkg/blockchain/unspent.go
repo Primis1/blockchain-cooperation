@@ -33,19 +33,19 @@ func (u *UnspentTransactionSET) Reindex() {
 	err := db.Update(func(txn *badger.Txn) error {
 		for txId, outs := range UTXO {
 			key, err := hex.DecodeString(txId)
-			utils.HandleErr(err)
+			utils.DisplayErr(err)
 
 			key = append(utxoPrefix, key...)
 
 			// PUSH it into database
 			err = txn.Set(key, outs.SerializeOuts())
-			utils.HandleErr(err)
+			utils.DisplayErr(err)
 		}
 
 		return nil
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 }
 
 // Add some transaction into block
@@ -61,14 +61,14 @@ func (u *UnspentTransactionSET) Update(block *Block) {
 					// NOTE then we put
 					inID := append(utxoPrefix, in.ID...)
 					item, err := txn.Get(inID) // NOTE get value attached to index
-					utils.HandleErr(err)
+					utils.DisplayErr(err)
 					var v []byte
 					err = item.Value(func(val []byte) error {
 						v = val
 						return nil
 					})
 
-					utils.HandleErr(err)
+					utils.DisplayErr(err)
 					// deserialize bytes into TXOs
 					outs := DeserializeOuts(v)
 
@@ -108,7 +108,7 @@ func (u *UnspentTransactionSET) Update(block *Block) {
 		return nil
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 }
 
 func (u UnspentTransactionSET) FindUnspentTransactions(pubHash []byte) []TXO {
@@ -130,7 +130,7 @@ func (u UnspentTransactionSET) FindUnspentTransactions(pubHash []byte) []TXO {
 				v = val
 				return nil
 			})
-			utils.HandleErr(err)
+			utils.DisplayErr(err)
 
 			outs := DeserializeOuts(v)
 
@@ -142,7 +142,7 @@ func (u UnspentTransactionSET) FindUnspentTransactions(pubHash []byte) []TXO {
 		}
 		return nil
 	})
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return nil
 }
@@ -167,7 +167,7 @@ func (u *UnspentTransactionSET) CountUnspentOuts() int {
 		return nil
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return counter
 }
@@ -259,7 +259,7 @@ func (u UnspentTransactionSET) FindSpendableOutputs(pubKeyHash []byte, amount in
 				v = val
 				return nil
 			})
-			utils.HandleErr(err)
+			utils.DisplayErr(err)
 			k = bytes.TrimPrefix(k, utxoPrefix)
 			txID := hex.EncodeToString(k)
 			outs := DeserializeOuts(v)
@@ -273,6 +273,6 @@ func (u UnspentTransactionSET) FindSpendableOutputs(pubKeyHash []byte, amount in
 		}
 		return nil
 	})
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 	return accumulated, unspentOuts
 }

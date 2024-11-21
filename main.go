@@ -4,6 +4,8 @@ import (
 	"blockchain/internal/cli"
 	"blockchain/internal/config"
 	"runtime"
+	// "blockchain/internal/cli"
+	// "runtime"
 )
 
 // var chain = blockchain.Facade
@@ -11,6 +13,7 @@ import (
 func init() {
 	// NOTE initialize env variables
 	config.MustEnvironment()
+	config.CreateFilesIfNotExist()
 }
 
 func main() {

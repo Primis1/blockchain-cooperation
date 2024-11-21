@@ -30,7 +30,7 @@ type (
 )
 
 var (
-	dbPath      = "../tmp/blocks_%s"
+	dbPath      = "/home/guts/repos/bc/tmp/blocks_%s/"
 	genesisData = os.Getenv("genesisData")
 )
 
@@ -62,7 +62,7 @@ func (b *Blockchain) SignTransaction(t *Transaction, privateKey ecdsa.PrivateKey
 
 	for _, in := range t.Inputs {
 		prevT, err := b.FindTransaction(in.ID)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		prevTs[hex.EncodeToString(prevT.ID)] = prevT
 	}
@@ -79,7 +79,7 @@ func (b *Blockchain) VerifyTransaction(t *Transaction) bool {
 	// NOTE collect all transactions into hash-table
 	for _, in := range t.Inputs {
 		prevT, err := b.FindTransaction(in.ID)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		prevTs[hex.EncodeToString(prevT.ID)] = prevT
 	}
@@ -100,11 +100,11 @@ func ContinueBlockchain(nodeId string) *Blockchain {
 	opts := badger.DefaultOptions(dbPath)
 	opts.ValueDir = dbPath
 	db, err := openDB(path, opts)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	err = db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte("lh"))
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		err = item.Value(func(val []byte) error {
 			lastHash = val
 
@@ -113,7 +113,7 @@ func ContinueBlockchain(nodeId string) *Blockchain {
 
 		return err
 	})
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	chain := Blockchain{lastHash, db}
 
@@ -132,14 +132,14 @@ func InitBlockchain(address, nodeId string) *Blockchain {
 	opts := badger.DefaultOptions(path)
 
 	db, err := openDB(path, opts)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	err = db.Update(func(txn *badger.Txn) error {
 		cbtx := CoinbaseTx(address, genesisData)
 		genesis := CreateGenesis(cbtx)
 		fmt.Println("Genesis created")
 		err = txn.Set(genesis.Hash, genesis.Serialize())
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		err = txn.Set([]byte("lh"), genesis.Hash)
 
 		lastHash = genesis.Hash
@@ -148,7 +148,7 @@ func InitBlockchain(address, nodeId string) *Blockchain {
 
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	blockchain := Blockchain{lastHash, db}
 	return &blockchain
@@ -158,13 +158,13 @@ func (r *Blockchain) SaveBlock(block *Block) error {
 	return r.Database.Update(func(txn *badger.Txn) error {
 		// NOTE if passed block is empty
 		if block == nil {
-			utils.HandleErr("can't save nil block")
+			utils.DisplayErr("can't save nil block")
 		}
 
 		serializedBlock := block.Serialize()
 
 		err := txn.Set(block.Hash, serializedBlock)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		return nil
 	})
@@ -180,17 +180,17 @@ func (r *Blockchain) GetBlockByHash(hash []byte) *Block {
 
 		// NOTE bunch of checks
 		if err == badger.ErrKeyNotFound {
-			utils.HandleErr("block is not found")
+			utils.DisplayErr("block is not found")
 		}
 		// NOTE copy value for return in immutable way
 		blockData, err := item.ValueCopy(nil)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		block = DeserializeBlock(blockData)
 		return nil
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 	return block
 }
 
@@ -201,7 +201,7 @@ func (r *Blockchain) GetLastHash() ([]byte, error) {
 	// NOTE retrieving "lh" hash value
 	err := r.Database.View(func(t *badger.Txn) error {
 		item, err := t.Get([]byte("lh"))
-		utils.HandleErr("failed to get last hash")
+		utils.DisplayErr("failed to get last hash")
 
 		lhash = item.KeyCopy(nil)
 		return err
@@ -215,7 +215,7 @@ func (r *Blockchain) SaveLastHash(hash []byte) error {
 		// NOTE badger is key-value DB, so we re-assign the last
 		// NOTE "lh" hash to the argument; all done in bytes - bla bla bla
 		err := t.Set([]byte("lh"), hash)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		return nil
 	})
@@ -228,7 +228,7 @@ func (r *Blockchain) FindUniqueTransaction(address []byte) ([]Transaction, error
 	// NOTE we get the hash, i.e the unique parameter
 	// NOTE of the block
 	lastHash, err := r.GetLastHash()
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	currentHash := lastHash
 	for len(currentHash) > 0 {
@@ -302,7 +302,7 @@ func (chain *Blockchain) GetBestHeightAndLastHash() (int, []byte) {
 	err := chain.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte("lh"))
 
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		item.Value(func(val []byte) error {
 			lastHash = val
@@ -310,7 +310,7 @@ func (chain *Blockchain) GetBestHeightAndLastHash() (int, []byte) {
 		})
 
 		item, err = txn.Get(lastHash)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		var lastBlockData []byte
 
@@ -326,7 +326,7 @@ func (chain *Blockchain) GetBestHeightAndLastHash() (int, []byte) {
 		return nil
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 	return lastHeight, lastHash
 }
 
@@ -346,7 +346,7 @@ func (chain *Blockchain) GetBlock(hash []byte) Block {
 		}
 		return nil
 	})
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 	return block
 }
 
@@ -371,13 +371,13 @@ func (chain *Blockchain) MineBlock(transaction []*Transaction) *Block {
 
 	err := chain.Database.Update(func(txn *badger.Txn) error {
 		err := txn.Set(newBlock.Hash, newBlock.Serialize())
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		err = txn.Set([]byte("lh"), newBlock.Hash)
 
 		chain.LastHash = newBlock.Hash
 		return err
 	})
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return newBlock
 }
@@ -394,10 +394,10 @@ func (chain *Blockchain) AddBlock(block *Block) {
 
 		blockData := block.Serialize()
 		err := txn.Set(block.Hash, blockData)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		item, err := txn.Get([]byte("lh"))
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		var lastHash []byte
 		_ = item.Value(func(val []byte) error {
 			lastHash = val
@@ -405,7 +405,7 @@ func (chain *Blockchain) AddBlock(block *Block) {
 		})
 
 		item, err = txn.Get(lastHash)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		var lastBlockData []byte
 		_ = item.Value(func(val []byte) error {
 			lastBlockData = val
@@ -416,14 +416,14 @@ func (chain *Blockchain) AddBlock(block *Block) {
 
 		if block.Height > lastBlock.Height {
 			err = txn.Set([]byte("lh"), block.Hash)
-			utils.HandleErr(err)
+			utils.DisplayErr(err)
 			chain.LastHash = block.Hash
 		}
 
 		return nil
 	})
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 }
 
 // TODO we should make a method which will iterate over blockchain transactions
@@ -503,7 +503,7 @@ func openDB(dir string, opts badger.Options) (*badger.DB, error) {
 				info.Info("database unlocked, value log truncated")
 				return db, nil
 			}
-			utils.HandleErr(err)
+			utils.DisplayErr(err)
 		}
 		return nil, err
 	} else {

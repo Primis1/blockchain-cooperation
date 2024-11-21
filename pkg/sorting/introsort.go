@@ -7,7 +7,7 @@ import (
 
 func IntroSort(arr []int) {
 	if arr == nil {
-		utils.HandleErr("\nArray in QUICKSORT is empty!\n")
+		utils.DisplayErr("\nArray in QUICKSORT is empty!\n")
 	}
 
 	maxDepth := int(2 * math.Log2(float64(len(arr))))

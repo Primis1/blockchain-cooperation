@@ -73,7 +73,7 @@ func (b *Block) Serialize() []byte {
 	var res bytes.Buffer
 	encoder := gob.NewEncoder(&res)
 	err := encoder.Encode(b)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 	return res.Bytes()
 }
 
@@ -86,7 +86,7 @@ func DeserializeBlock(data []byte) *Block {
 	var block Block
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	err := decoder.Decode(&block)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return &block
 }

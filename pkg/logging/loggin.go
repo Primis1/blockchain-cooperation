@@ -63,14 +63,14 @@ func (l *ErrorApplication) Error(msg any, args ...any) {
 	asserted := fmt.Sprint(msg)
 	file, line := getCaller()
 	formatted := fmt.Sprintf(asserted, args...)
-	l.log.Fatalf("[%s : %d] \n\n%s\n\n", file, line, formatted)
+	l.log.Panicf("[%s : %d] \n\n%s\n\n", file, line, formatted)
 }
 
 func getCaller() (string, int) {
 
 	projectRootFolder := os.Getenv("KEY_WORD")
 
-	_, file, line, ok := runtime.Caller(3)
+	_, file, line, ok := runtime.Caller(4)
 	if !ok {
 		log.Fatalln("caller can not be defined")
 	}

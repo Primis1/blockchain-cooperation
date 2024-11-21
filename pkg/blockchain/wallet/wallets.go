@@ -1,4 +1,3 @@
-// BUG type elliptic.p256Curve has no exported fields
 // NOTE For data to encoded and decoded, field should be `exportable`.
 // NOTE `gob` package can not access the field which are from lower case
 package wallet
@@ -17,10 +16,8 @@ type Wallets struct {
 	Wallets map[string]*Wallet
 }
 
-// TODO remove boiler-plate
-var (
-	walletPath = "../tmp/wallet_%s.data"
-)
+var walletPathString = "/home/guts/repos/bc/tmp/wallet_%s.data"
+
 
 func CreateWallets(nodeId string) (*Wallets, error) {
 	wallets := Wallets{}
@@ -59,7 +56,7 @@ func (w Wallets) GetAllAddresses() []string {
 }
 
 func (w *Wallets) loadFile(nodeId string) error {
-	walletPath := fmt.Sprintf(walletPath, nodeId)
+	walletPath := fmt.Sprintf(walletPathString, nodeId)
 	if _, err := os.Stat(walletPath); os.IsNotExist(err) {
 		return err
 	}
@@ -67,7 +64,7 @@ func (w *Wallets) loadFile(nodeId string) error {
 	var wallets Wallets
 
 	fileContent, err := os.ReadFile(walletPath)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	gob.Register(elliptic.P256())
 
@@ -84,11 +81,11 @@ func (w *Wallets) loadFile(nodeId string) error {
 }
 
 func (w *Wallets) SaveFile(nodeId string) {
-	walletPath := fmt.Sprintf(walletPath, nodeId)
+	walletPath := fmt.Sprintf(walletPathString, nodeId)
 
 	jsonData, err := json.Marshal(w)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
-	err = os.WriteFile(walletPath, jsonData, 0544)
-	utils.HandleErr(err)
+	err = os.WriteFile(walletPath, jsonData, 0777)
+	utils.DisplayErr(err)
 }

@@ -74,8 +74,8 @@ func (cli *CommandLine) printChain(nodeId string) {
 }
 
 func (cli *CommandLine) createBlockChain(address, nodeId string) {
-	if !wallet.ValidateAddress(address) {
-		utils.HandleErr("Address is not valid")
+	if !wallet.ValidateAddress("address") {
+		utils.DisplayErr("Address is not valid")
 	}
 	chain := blockchain.InitBlockchain(address, nodeId)
 	chain.Database.Close()
@@ -89,7 +89,7 @@ func (cli *CommandLine) createBlockChain(address, nodeId string) {
 
 func (cli *CommandLine) getBalance(address, nodeId string) {
 	if !wallet.ValidateAddress(address) {
-		utils.HandleErr("Address is not valid")
+		utils.DisplayErr("Address is not valid")
 	}
 
 	chain := blockchain.ContinueBlockchain(nodeId)
@@ -115,7 +115,7 @@ func (cli *CommandLine) StartNode(nodeID, minerAddress string) {
 		if wallet.ValidateAddress(minerAddress) {
 			fmt.Println("Mining is on. Address to receive rewards: ", minerAddress)
 		} else {
-			utils.HandleErr("Wrong miner address!")
+			utils.DisplayErr("Wrong miner address!")
 		}
 	}
 	network.StartServer(nodeID, minerAddress)
@@ -123,10 +123,10 @@ func (cli *CommandLine) StartNode(nodeID, minerAddress string) {
 
 func (cli *CommandLine) send(from, to string, amount int, nodeId string, mineNow bool) {
 	if !wallet.ValidateAddress(from) {
-		utils.HandleErr("Address is not valid")
+		utils.DisplayErr("Address is not valid")
 	}
 	if !wallet.ValidateAddress(to) {
-		utils.HandleErr("Address is not valid")
+		utils.DisplayErr("Address is not valid")
 	}
 
 	chain := blockchain.ContinueBlockchain(nodeId)
@@ -136,7 +136,7 @@ func (cli *CommandLine) send(from, to string, amount int, nodeId string, mineNow
 
 	// create a transaction from followed arguments
 	wallets, err := wallet.CreateWallets(nodeId)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 	wallet := wallets.GetWallet(from)
 	tx := blockchain.NewTransaction(wallet, to, amount, &UTXOSet)
 	if mineNow {
@@ -166,7 +166,7 @@ func (cli *CommandLine) Run() {
 
 	nodeID := os.Getenv("NODE_ID")
 	if nodeID == "" {
-		utils.HandleErr("NODE_ID env is not set!")
+		utils.DisplayErr("NODE_ID env is not set!")
 		runtime.Goexit()
 	}
 
@@ -191,28 +191,28 @@ func (cli *CommandLine) Run() {
 	switch os.Args[1] {
 	case "startnode":
 		err := startNodeCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "getbalance":
 		err := getBalanceCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "createblockchain":
 		err := createBlockchainCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "reindex":
 		err := reindexCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "listaddresses":
 		err := listAddressesCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "createwallet":
 		err := createWalletCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "printchain":
 		err := printChainCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 	default:
 		cli.printUsage()
 		runtime.Goexit()

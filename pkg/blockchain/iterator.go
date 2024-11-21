@@ -17,7 +17,7 @@ func (iter *BlockchainIterator) Next() *Block {
 
 	err := iter.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(iter.CurrentHash)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		var encodedBlock []byte
 		err = item.Value(func(val []byte) error {
 			encodedBlock = val
@@ -27,7 +27,7 @@ func (iter *BlockchainIterator) Next() *Block {
 
 		return err
 	})
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	iter.CurrentHash = block.PrevHash
 

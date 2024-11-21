@@ -78,7 +78,7 @@ func newKeyPair() (ecdsa.PrivateKey, []byte) {
 
 	// NOTE not deterministic random value generator
 	private, err := ecdsa.GenerateKey(curve, rand.Reader)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	// NOTE remember the struct. We simply combine X/Y intercepts into pubKey
 	pub := append(private.PublicKey.X.Bytes(), private.PublicKey.Y.Bytes()...)
@@ -91,7 +91,7 @@ func PublicKey(pubkey []byte) []byte {
 
 	hasher := ripemd160.New()
 	_, err := hasher.Write(sha1[:])
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	// NOTE Sum() concatenates two values, but we want to launch
 	// NOTE the ripemd160 algorithm we pass nil value

@@ -9,7 +9,16 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-func HandleErr(T any) {
+// simplest utility
+// FROM:
+//
+//	if err != nil {
+//		logging.ErrorSingleTon.Error(err)
+//	}
+//
+// TO
+// utils.DisplayErr(err)
+func DisplayErr(T any) {
 	if T != nil {
 		logging.ErrorSingleTon().Error(T)
 	}
@@ -20,7 +29,7 @@ func ToHex(num int64) []byte {
 	buff := new(bytes.Buffer)
 
 	err := binary.Write(buff, binary.BigEndian, num)
-	HandleErr(err)
+	DisplayErr(err)
 
 	return buff.Bytes()
 }
@@ -33,7 +42,7 @@ func Base58Encode(b []byte) []byte {
 
 func Base58Decode(b []byte) []byte {
 	decode, err := base58.Decode(string(b[:]))
-	HandleErr(err)
+	logging.ErrorSingleTon().Error(err)
 
 	return decode
 }
@@ -48,6 +57,6 @@ func GobEncoder(data interface{}) []byte {
 	enc := gob.NewEncoder(&buff)
 
 	err := enc.Encode(data)
-	HandleErr(err)
+	logging.ErrorSingleTon().Error(err)
 	return buff.Bytes()
 }

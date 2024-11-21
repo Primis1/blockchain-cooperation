@@ -86,7 +86,7 @@ func (tx Transaction) Serialize() []byte {
 	enc := gob.NewEncoder(&encoded)
 	err := enc.Encode(tx)
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return encoded.Bytes()
 }
@@ -96,18 +96,18 @@ func (out TXOs) SerializeOuts() []byte {
 
 	enc := gob.NewEncoder(&buffer)
 	err := enc.Encode(out)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return buffer.Bytes()
 }
 
-func DeserializeTransactions(data []byte, tx interface{})  {
+func DeserializeTransactions(data []byte, tx interface{}) {
 	var txn = &tx
 
 	decode := gob.NewDecoder(bytes.NewReader(data))
 	err := decode.Decode(txn)
 
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 }
 
 func DeserializeOuts(data []byte) TXOs {
@@ -115,7 +115,7 @@ func DeserializeOuts(data []byte) TXOs {
 
 	decode := gob.NewDecoder(bytes.NewReader(data))
 	err := decode.Decode(&out)
-	utils.HandleErr(err)
+	utils.DisplayErr(err)
 
 	return out
 }
@@ -145,7 +145,7 @@ func (t *Transaction) Sign(private ecdsa.PrivateKey, prevT map[string]Transactio
 		// NOTE bcause they contain reference to the OUTs. Therefore if some input
 		// NOTE contains no values, it means that it does not exist
 		if prevT[hex.EncodeToString(in.ID)].ID == nil {
-			utils.HandleErr("ERROR: Previous transaction is not correct")
+			utils.DisplayErr("ERROR: Previous transaction is not correct")
 		}
 	}
 
@@ -161,7 +161,7 @@ func (t *Transaction) Sign(private ecdsa.PrivateKey, prevT map[string]Transactio
 		txCopy.Inputs[inId].PubKey = nil
 
 		r, s, err := ecdsa.Sign(rand.Reader, &private, txCopy.ID)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		// NOTE we `sign` ID, which is hash
 		signature := append(r.Bytes(), s.Bytes()...)
@@ -245,7 +245,7 @@ func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UnspentTransa
 
 	for txid, outs := range validOutputs {
 		txID, err := hex.DecodeString(txid)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 
 		for _, out := range outs {
 			input := TXI{txID, out, nil, w.PublicKey}
@@ -276,7 +276,7 @@ func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
 		ranData := make([]byte, 24)
 		_, err := rand.Read(ranData)
-		utils.HandleErr(err)
+		utils.DisplayErr(err)
 		data = fmt.Sprintf("%x", ranData)
 
 	}
